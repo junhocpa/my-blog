@@ -1,0 +1,297 @@
+/* ==========================================================================
+   픽셀 아트 에디터 스타일
+   섹션: 디자인 토큰 → 베이스 → 격자 → 도구 줄 → 팔레트 → 액션 버튼 → 반응형
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 디자인 토큰
+   -------------------------------------------------------------------------- */
+:root {
+  /* 색상 */
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --text: #1c1c1e;
+  --text-muted: #5f5f66;
+  --border: #d0d0d6;
+  --grid-line: rgba(0, 0, 0, 0.14);
+  --checker-a: #ffffff;
+  --checker-b: #e2e2e7;
+  --accent: #1e88e5;
+  --accent-soft: #e3f0fc;
+  --danger: #b3261e;
+
+  /* 크기·간격 */
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --radius: 10px;
+  --radius-sm: 8px;
+  --touch: 44px;           /* 최소 터치 대상 */
+  --content-max: 520px;
+  --grid-max: 480px;
+
+  /* 타이포그래피 */
+  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic",
+               system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141416;
+    --surface: #1f1f23;
+    --text: #ececef;
+    --text-muted: #a8a8b0;
+    --border: #3d3d44;
+    --grid-line: rgba(255, 255, 255, 0.16);
+    --checker-a: #2a2a2f;
+    --checker-b: #3a3a41;
+    --accent: #64b5f6;
+    --accent-soft: #16324c;
+    --danger: #f2b8b5;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. 베이스
+   -------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-4);
+  max-width: var(--content-max);
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.tagline {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.noscript {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   3. 16×16 격자
+   -------------------------------------------------------------------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+  width: min(90vw, var(--grid-max));
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: 1px solid var(--grid-line);
+  /* 투명(빈) 칸을 나타내는 체커보드 — 타일 하나(12.5%) = 셀 2칸 */
+  background-color: var(--checker-a);
+  background-image: conic-gradient(
+    var(--checker-b) 25%, transparent 0 50%,
+    var(--checker-b) 0 75%, transparent 0
+  );
+  background-size: 12.5% 12.5%;
+  touch-action: none;          /* 드래그 페인팅 중 스크롤 방지 (필수) */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+
+.cell {
+  border-right: 1px solid var(--grid-line);
+  border-bottom: 1px solid var(--grid-line);
+}
+
+.cell:nth-child(16n) {
+  border-right: none;
+}
+
+.cell:nth-last-child(-n + 16) {
+  border-bottom: none;
+}
+
+@media (hover: hover) {
+  .cell:hover {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. 도구 줄 (현재 색 / 커스텀 피커 / 그리기·지우개)
+   -------------------------------------------------------------------------- */
+.tools {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.current-color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+}
+
+.current-swatch {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: #1e88e5; /* JS가 즉시 갱신 */
+}
+
+.current-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.current-label code {
+  font-family: Consolas, "Courier New", monospace;
+  color: var(--text);
+}
+
+/* 커스텀 색상 피커 */
+.picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  cursor: pointer;
+}
+
+.picker input[type="color"] {
+  width: var(--touch);
+  height: var(--touch);
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  cursor: pointer;
+}
+
+.picker-text {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* 그리기/지우개 토글 버튼 */
+.tool-btn {
+  min-height: var(--touch);
+  min-width: var(--touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.tool-btn[aria-pressed="true"] {
+  border: 2px solid var(--accent);
+  background-color: var(--accent-soft);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   5. 팔레트
+   -------------------------------------------------------------------------- */
+.palette {
+  display: grid;
+  /* 모바일: 44px 터치 대상을 보장하는 만큼만 열 생성 */
+  grid-template-columns: repeat(auto-fill, minmax(var(--touch), 1fr));
+  gap: 6px;
+}
+
+.swatch {
+  aspect-ratio: 1;
+  min-height: var(--touch);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* 선택 상태: 색이 아닌 형태(테두리 두께+오프셋)로도 구분 */
+.swatch[aria-pressed="true"] {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   6. 액션 버튼 줄
+   -------------------------------------------------------------------------- */
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-btn--primary {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--text);
+}
+
+.action-btn--danger {
+  color: var(--danger);
+}
+
+/* --------------------------------------------------------------------------
+   7. 반응형 (데스크톱 보정)
+   -------------------------------------------------------------------------- */
+@media (min-width: 520px) {
+  .palette {
+    /* 넓은 화면: 8열 × 2행 (셀 폭 ≥ 44px 유지됨) */
+    grid-template-columns: repeat(8, 1fr);
+  }
+}

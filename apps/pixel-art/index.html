@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>픽셀 아트 에디터</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="editor.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>픽셀 아트 에디터</h1>
+    <p class="tagline">16×16 도트를 찍고 PNG로 저장하세요.</p>
+  </header>
+
+  <main class="app-main">
+    <!-- 캔버스 영역 -->
+    <section class="board" aria-label="그림판">
+      <div id="grid" class="grid" role="img" aria-label="16×16 픽셀 캔버스"></div>
+      <noscript>
+        <p class="noscript">이 에디터를 사용하려면 자바스크립트를 켜야 합니다.</p>
+      </noscript>
+    </section>
+
+    <!-- 도구 줄 -->
+    <section class="tools" aria-label="도구">
+      <div class="tool-row">
+        <div class="current-color">
+          <span id="current-swatch" class="current-swatch" aria-hidden="true"></span>
+          <span class="current-label">현재 색 <code id="current-hex">#1e88e5</code></span>
+        </div>
+        <label class="picker" for="color-picker">
+          <input type="color" id="color-picker" value="#1e88e5" aria-label="커스텀 색상 선택">
+          <span class="picker-text">커스텀 색</span>
+        </label>
+        <button type="button" id="pen-btn" class="tool-btn" aria-pressed="true">그리기</button>
+        <button type="button" id="eraser-btn" class="tool-btn" aria-pressed="false">지우개</button>
+      </div>
+
+      <!-- 팔레트 (스와치는 JS로 생성) -->
+      <div id="palette" class="palette" role="group" aria-label="색상 팔레트"></div>
+
+      <!-- 액션 버튼 줄 -->
+      <div class="action-row">
+        <button type="button" id="clear-btn" class="action-btn action-btn--danger">전체 지우기</button>
+        <button type="button" id="save-btn" class="action-btn action-btn--primary">PNG 저장</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
