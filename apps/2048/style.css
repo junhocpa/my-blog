@@ -1,0 +1,299 @@
+/* ============================================================
+   2048 게임 스타일
+   - 디자인 토큰: :root CSS 변수 (다크 모드: prefers-color-scheme)
+   - 모바일 우선, 375px에서 가로 스크롤 없음
+   ============================================================ */
+
+/* ==== 디자인 토큰 ==== */
+:root {
+  /* 페이지 */
+  --bg: #faf6f0;
+  --text: #3d3a33;
+  --text-muted: #5c564c;
+
+  /* 보드 */
+  --board-bg: #b3a89a;
+  --cell-bg: #c6bcae;
+  --overlay-bg: rgba(250, 246, 240, 0.85);
+
+  /* UI */
+  --score-bg: #e8e0d4;
+  --btn-bg: #6f6455;
+  --btn-text: #ffffff;
+
+  /* 타일 (값별) — WCAG AA 대비 확보 */
+  --tile-text-dark: #4a4238;
+  --tile-text-light: #ffffff;
+  --tile-2: #ece3d5;
+  --tile-4: #ebd8b6;
+  --tile-8: #cf7433;
+  --tile-16: #c65e2e;
+  --tile-32: #bd4b2b;
+  --tile-64: #b03a28;
+  --tile-128: #a3811c;
+  --tile-256: #9c7a14;
+  --tile-512: #94720f;
+  --tile-1024: #8c6a0b;
+  --tile-2048: #856307;
+  --tile-super: #3c3a33; /* 4096 이상 공통 */
+
+  /* 치수 */
+  --radius: 8px;
+  --gap: 10px;
+}
+
+/* 다크 모드: 배경·보드·UI 변수만 어두운 톤으로 교체 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1c19;
+    --text: #e8e2d8;
+    --text-muted: #a59d90;
+    --board-bg: #45403a;
+    --cell-bg: #57514a;
+    --overlay-bg: rgba(30, 28, 25, 0.85);
+    --score-bg: #33302a;
+    --btn-bg: #7a6f5e;
+  }
+}
+
+/* ==== 리셋/기본 ==== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic",
+    "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+}
+
+/* ==== 헤더: 제목 + 점수판 ==== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.scores {
+  display: flex;
+  gap: 8px;
+}
+
+.score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--score-bg);
+  border-radius: 6px;
+  padding: 6px 14px;
+  min-width: 72px;
+}
+
+.score-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.score-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==== 안내문 + 새 게임 버튼 ==== */
+.subheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.intro {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* ==== 보드 ==== */
+.board-wrap {
+  position: relative;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: var(--gap);
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: var(--gap);
+  background: var(--board-bg);
+  border-radius: var(--radius);
+  touch-action: none;      /* 스와이프 중 화면 스크롤 방지 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cell {
+  position: relative;
+  background: var(--cell-bg);
+  border-radius: 6px;
+}
+
+/* ==== 타일 ==== */
+.tile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.3rem, 9vw, 2.25rem);
+  background: var(--tile-super); /* data-value 상한(4096+) 초과용 기본색 */
+  color: var(--tile-text-light);
+}
+
+/* 자릿수가 늘면 글자 크기 축소 */
+.tile--len3 {
+  font-size: clamp(1.1rem, 7vw, 1.8rem);
+}
+
+.tile--len4 {
+  font-size: clamp(0.95rem, 5.5vw, 1.45rem);
+}
+
+/* 값별 색상 매핑 */
+.tile[data-value="2"]    { background: var(--tile-2);    color: var(--tile-text-dark); }
+.tile[data-value="4"]    { background: var(--tile-4);    color: var(--tile-text-dark); }
+.tile[data-value="8"]    { background: var(--tile-8);    color: var(--tile-text-light); }
+.tile[data-value="16"]   { background: var(--tile-16);   color: var(--tile-text-light); }
+.tile[data-value="32"]   { background: var(--tile-32);   color: var(--tile-text-light); }
+.tile[data-value="64"]   { background: var(--tile-64);   color: var(--tile-text-light); }
+.tile[data-value="128"]  { background: var(--tile-128);  color: var(--tile-text-light); }
+.tile[data-value="256"]  { background: var(--tile-256);  color: var(--tile-text-light); }
+.tile[data-value="512"]  { background: var(--tile-512);  color: var(--tile-text-light); }
+.tile[data-value="1024"] { background: var(--tile-1024); color: var(--tile-text-light); }
+.tile[data-value="2048"] { background: var(--tile-2048); color: var(--tile-text-light); }
+
+/* ==== 애니메이션 ==== */
+@keyframes pop-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.tile--new {
+  animation: pop-in 160ms ease;
+}
+
+.tile--merged {
+  animation: pulse 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile--new,
+  .tile--merged {
+    animation: none;
+  }
+}
+
+/* ==== 오버레이 (승리 / 게임 오버) ==== */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--overlay-bg);
+  border-radius: var(--radius);
+  text-align: center;
+  padding: 16px;
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay-title {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.overlay-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.overlay-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ==== 푸터 ==== */
+.footer {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

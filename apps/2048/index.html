@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2048</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1 class="title">2048</h1>
+      <div class="scores" aria-live="polite">
+        <div class="score-box">
+          <span class="score-label">점수</span>
+          <span class="score-value" id="score">0</span>
+        </div>
+        <div class="score-box">
+          <span class="score-label">최고</span>
+          <span class="score-value" id="best">0</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="subheader">
+      <p class="intro">같은 숫자 타일을 합쳐 <strong>2048</strong>을 만들어 보세요!</p>
+      <button type="button" class="btn" id="btn-new">새 게임</button>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board" aria-label="2048 게임 보드"></div>
+      <div class="overlay" id="overlay" hidden>
+        <p class="overlay-title" id="overlay-title"></p>
+        <p class="overlay-score" id="overlay-score" hidden></p>
+        <div class="overlay-buttons">
+          <button type="button" class="btn" id="btn-continue" hidden>계속하기</button>
+          <button type="button" class="btn" id="btn-overlay-new" hidden>새 게임</button>
+          <button type="button" class="btn" id="btn-restart" hidden>다시 시작</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>조작법: 방향키(← ↑ → ↓)를 누르거나 보드를 스와이프해 타일을 밀어 보세요.</p>
+    </footer>
+  </main>
+</body>
+</html>

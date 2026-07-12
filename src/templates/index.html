@@ -27,8 +27,28 @@
   </header>
 
   <main class="container">
-    <nav class="tag-filter" aria-label="태그 필터">{{tagList}}</nav>
-    <ul class="post-list">{{postList}}</ul>
+    <section class="app-section" aria-labelledby="app-heading">
+      <h2 id="app-heading" class="section-heading">웹앱</h2>
+      <ul class="app-list">
+        <li class="app-card">
+          <a class="app-link" href="{{root}}apps/2048/index.html">
+            <span class="app-preview" aria-hidden="true">
+              <iframe src="{{root}}apps/2048/index.html" title="2048 게임 미리보기" loading="lazy" tabindex="-1" scrolling="no"></iframe>
+            </span>
+            <span class="app-info">
+              <span class="app-card-title">2048</span>
+              <span class="app-card-desc">방향키·스와이프로 숫자 타일을 밀어 합치는 퍼즐 게임. 점수판과 최고 기록 저장.</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="posts-heading">
+      <h2 id="posts-heading" class="section-heading">글</h2>
+      <nav class="tag-filter" aria-label="태그 필터">{{tagList}}</nav>
+      <ul class="post-list">{{postList}}</ul>
+    </section>
   </main>
 
   <footer class="site-footer">

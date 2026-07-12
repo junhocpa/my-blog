@@ -140,6 +140,88 @@ a:hover {
 }
 
 /* ==========================================================================
+   웹앱 카드 (index)
+   ========================================================================== */
+
+.section-heading {
+  margin: 2rem 0 1rem;
+  font-size: 1.3rem;
+  line-height: 1.4;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.app-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.app-card:hover {
+  border-color: var(--accent);
+}
+
+.app-link {
+  display: block;
+  color: inherit;
+}
+
+.app-link:hover {
+  text-decoration: none;
+}
+
+/* iframe 미리보기 — 축소 렌더링, 클릭은 카드 링크가 받는다 */
+.app-preview {
+  position: relative;
+  display: block;
+  height: 220px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.app-preview iframe {
+  width: 200%;
+  height: 440px;
+  border: 0;
+  transform: scale(0.5);
+  transform-origin: 0 0;
+}
+
+.app-info {
+  display: block;
+  padding: 0.9rem 1rem 1.05rem;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+.app-card-title {
+  display: block;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.app-link:hover .app-card-title {
+  color: var(--accent);
+}
+
+.app-card-desc {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
    글 목록 (index)
    ========================================================================== */
 
@@ -428,6 +510,10 @@ a:hover {
 @media (min-width: 640px) {
   .container {
     padding: 0 1.5rem;
+  }
+
+  .app-list {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .post-title {

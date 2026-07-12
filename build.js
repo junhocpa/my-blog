@@ -495,6 +495,15 @@ function main() {
   fs.copyFileSync(path.join(SRC_DIR, 'style.css'), path.join(DIST_DIR, 'assets', 'style.css'));
   fs.copyFileSync(path.join(SRC_DIR, 'main.js'), path.join(DIST_DIR, 'assets', 'main.js'));
 
+  // 웹앱 복사 (apps/ → dist/apps/) — 지침·스펙 등 .md 문서는 배포에서 제외
+  const APPS_DIR = path.join(ROOT, 'apps');
+  if (fs.existsSync(APPS_DIR)) {
+    fs.cpSync(APPS_DIR, path.join(DIST_DIR, 'apps'), {
+      recursive: true,
+      filter: (src) => !src.endsWith('.md'),
+    });
+  }
+
   console.log(`빌드 완료: 글 ${posts.length}편, 태그 ${allTags.length}개 → dist/`);
 }
 
