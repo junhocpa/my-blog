@@ -45,12 +45,14 @@ var DEPOSIT_SANE_MAX = 2000000;
 // 파서들
 // ------------------------------------------------------------------
 
-/** "7억 1,000" / "5억" / "9,500" / "1억5000" → 만원 정수. 해석 불가면 null */
+/** "7억 1,000" / "5억" / "9,500" / "1억5000" / "7,100만" → 만원 정수. 해석 불가면 null
+    ※ 말미의 "만"은 만원 단위 표기이므로 허용한다. 이것을 놓치면 prc↔hanPrc 교차검증이
+      "해석 불가"로 빠져 불일치를 조용히 통과시킨다(리뷰에서 실제로 재현된 결함). */
 function parseHanPrc(text) {
   if (typeof text !== 'string') return null;
   var s = text.replace(/[\s,]/g, '');
   if (!s) return null;
-  var m = s.match(/^(?:(\d+)억)?(\d+)?$/);
+  var m = s.match(/^(?:(\d+)억)?(?:(\d+)만?)?$/);
   if (!m || (!m[1] && !m[2])) return null;
   var eok = m[1] ? parseInt(m[1], 10) : 0;
   var man = m[2] ? parseInt(m[2], 10) : 0;
@@ -129,6 +131,14 @@ function normalizeOne(raw, ctx) {
     warnings.push(
       id + ': prc(' + deposit + ')와 hanPrc("' + depositText + '"→' + fromHan + ')가 일치하지 않는다 ' +
         '— 금액 단위 전제가 틀렸을 수 있다'
+    );
+  } else if (depositText !== null && fromHan === null) {
+    // hanPrc가 있는데 해석하지 못했다 = 교차검증을 못 한 것이다.
+    // "검증했다"로 위장하지 않고 드러낸다. 표기 형식이 바뀌면 이 비율이 올라가 실행이 중단된다.
+    unitSuspect = true;
+    warnings.push(
+      id + ': hanPrc("' + depositText + '")를 해석할 수 없어 prc(' + deposit + ') 교차검증을 하지 못했다 ' +
+        '— 금액 표기 형식이 바뀌었을 수 있다'
     );
   }
   if (deposit < DEPOSIT_SANE_MIN || deposit > DEPOSIT_SANE_MAX) {

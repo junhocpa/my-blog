@@ -55,6 +55,7 @@ function computeDiff(o) {
   (o.failedRegionCodes || []).forEach(function (c) {
     failed[String(c)] = true;
   });
+  var anyRegionFailed = Object.keys(failed).length > 0;
 
   var histIn = o.history && o.history.items ? o.history.items : {};
   var histOut = Object.create(null);
@@ -130,8 +131,10 @@ function computeDiff(o) {
     var prevItem = prevById[id];
     var hist = histIn[id] || null;
 
-    // (2) 실패한 지역이면 삭제 판정을 보류한다
-    if (prevItem.regionCode && failed[String(prevItem.regionCode)]) {
+    // (2) 실패한 지역이면 삭제 판정을 보류한다.
+    //     regionCode를 모르는 매물(응답에 cortarNo가 없던 건)은 어느 지역인지 확인할 수 없으므로,
+    //     실패한 지역이 하나라도 있으면 역시 보류한다 — 판단 불가를 "사라짐"으로 위장하지 않는다.
+    if (failed[String(prevItem.regionCode)] || (anyRegionFailed && !prevItem.regionCode)) {
       heldForFailure += 1;
       var held = Object.assign({}, prevItem, { heldDueToFailure: true });
       out.push(held);

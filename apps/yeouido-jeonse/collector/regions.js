@@ -266,6 +266,7 @@ function pickFromCache(cache, include, warnings) {
       warnings.push(entry.gu + ' 정보가 없어 ' + entry.dong + '을(를) 해석할 수 없다');
       return;
     }
+    var groupKey = entry.gu + '/' + entry.dong;
     var matched = findByPrefixOnRegions(bucket.dongs, entry.dong);
     if (!matched.length) {
       // 조용히 넘기면 "매물 0건"으로 오해하게 된다. 반드시 경고로 드러낸다.
@@ -277,7 +278,8 @@ function pickFromCache(cache, include, warnings) {
     matched.forEach(function (r) {
       if (seen[r.cortarNo]) return;
       seen[r.cortarNo] = true;
-      out.push(r);
+      // 어느 설정 항목(동 이름)에서 나온 코드인지 기록한다 — 상한 적용 시 공평하게 나누기 위해
+      out.push(Object.assign({}, r, { groupKey: groupKey }));
     });
   });
   return out;
@@ -289,22 +291,58 @@ function findByPrefixOnRegions(regions, prefix) {
   });
 }
 
-/** 대상 코드 수 상한 적용 — 넘치면 잘라내고 무엇이 빠졌는지 경고한다 */
+/** 대상 코드 수 상한 적용 — 넘치면 잘라내고 무엇이 빠졌는지 경고한다.
+    설정한 동 이름(groupKey)별로 돌아가며 뽑는다. 단순히 앞에서 자르면
+    "당산동1~6가·영등포동1~8가"처럼 하위 법정동이 많은 지역이 상한을 다 먹고
+    설정 뒤쪽의 동(신길동·노량진동 등)이 통째로 빠진다 — 승인된 대상 지역(D3)이 조용히 사라지는 셈이다. */
 function capRegions(regions, maxCodes, warnings, source) {
-  var limited = regions;
-  if (typeof maxCodes === 'number' && regions.length > maxCodes) {
-    limited = regions.slice(0, maxCodes);
-    warnings.push(
-      '대상 법정동이 ' + regions.length + '개로 상한(' + maxCodes + ')을 넘었다 → 앞 ' + maxCodes +
-        '개만 수집한다. 제외됨: ' +
-        regions
-          .slice(maxCodes)
-          .map(function (r) {
-            return r.name;
-          })
-          .join(', ')
-    );
+  if (typeof maxCodes !== 'number' || regions.length <= maxCodes) {
+    return { regions: regions, source: source, warnings: warnings, cacheUsed: source === 'cache' };
   }
+
+  // groupKey별 버킷 (순서 유지)
+  var order = [];
+  var buckets = Object.create(null);
+  regions.forEach(function (r) {
+    var key = r.groupKey || '(기타)';
+    if (!buckets[key]) {
+      buckets[key] = [];
+      order.push(key);
+    }
+    buckets[key].push(r);
+  });
+
+  var limited = [];
+  for (var round = 0; limited.length < maxCodes; round++) {
+    var addedThisRound = 0;
+    for (var i = 0; i < order.length && limited.length < maxCodes; i++) {
+      var bucket = buckets[order[i]];
+      if (round < bucket.length) {
+        limited.push(bucket[round]);
+        addedThisRound += 1;
+      }
+    }
+    if (addedThisRound === 0) break; // 더 뽑을 것이 없다
+  }
+
+  var keptIds = Object.create(null);
+  limited.forEach(function (r) {
+    keptIds[r.cortarNo] = true;
+  });
+  var excluded = regions.filter(function (r) {
+    return !keptIds[r.cortarNo];
+  });
+  warnings.push(
+    '대상 법정동이 ' + regions.length + '개로 상한(' + maxCodes + ')을 넘었다 → 설정한 동마다 돌아가며 ' +
+      maxCodes + '개만 수집한다. 제외됨: ' +
+      excluded
+        .map(function (r) {
+          return r.name;
+        })
+        .join(', ') +
+      ' (전부 수집하려면 config.json의 politeness.maxRegionCodes를 올리세요 — 하드 상한 40)'
+  );
+
   return { regions: limited, source: source, warnings: warnings, cacheUsed: source === 'cache' };
 }
 
