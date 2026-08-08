@@ -642,6 +642,55 @@ async function runVerify(loaded) {
     ];
 
     var mapRef = client.mapReferer(articleListParams(cfg, targetRegion, 1, false));
+
+    /* 먼저 clusterList 로 실제 lgeo 를 얻어본다.
+       브라우저에서(쿠키·정상 헤더 포함) articleList 를 열어도 null 이 나왔다 →
+       쿠키 문제가 아니고 URL 이 틀렸다는 뜻이다. 실제 구현체 중 일부는
+       itemId·lgeo 에 빈 값이 아니라 클러스터 id 를 넣는다. 그 경로를 시험한다.
+       (교정한 clusterList URL 은 여기서 처음 실제로 시험된다) */
+    var realLgeo = null;
+    try {
+      var cUrl = client.buildClusterListUrl(articleListParams(cfg, targetRegion, 1, false));
+      log('[V1-0] clusterList 로 실제 lgeo 확보 시도 …');
+      log('     ' + cUrl);
+      var cRaw = await c.get(cUrl, { label: 'clusterList', expect: 'text', referer: mapRef });
+      var cText = String(cRaw.text == null ? '' : cRaw.text);
+      try {
+        fs.writeFileSync(path.join(RUN_LOGS_DIR, 'last-raw-cluster.txt'),
+          '요청 URL:\n' + cUrl + '\n\n응답 원문:\n' + client.maskSecrets(cText));
+      } catch (eCW) { /* 무시 */ }
+      var cJson = null;
+      try { cJson = cText.length ? JSON.parse(cText) : null; } catch (eCJ) { cJson = null; }
+      var found = [];
+      (function walk(node, d) {
+        if (!node || d > 5) return;
+        if (Array.isArray(node)) { node.forEach(function (v) { walk(v, d + 1); }); return; }
+        if (typeof node !== 'object') return;
+        if (node.lgeo) found.push(node);
+        Object.keys(node).forEach(function (k) { walk(node[k], d + 1); });
+      })(cJson, 0);
+      log('     → HTTP ' + cRaw.status + ', ' + cText.length + '바이트, lgeo ' + found.length + '개' +
+        (cText.length <= 200 ? ' / 원문: ' + client.maskSecrets(cText).replace(/\s+/g, ' ') : ''));
+      record.clusterProbe = { status: cRaw.status, bytes: cText.length, lgeoCount: found.length,
+        head: client.maskSecrets(cText.slice(0, 300)) };
+      if (found.length) {
+        realLgeo = found[0];
+        log('     ★ lgeo 확보: ' + realLgeo.lgeo + (realLgeo.count != null ? ' (매물 ' + realLgeo.count + '건)' : ''));
+      }
+    } catch (eC) {
+      if (eC && (eC.status === 429 || eC.status === 403)) throw eC;
+      log('     → clusterList 실패: ' + (eC && eC.message));
+      record.clusterProbe = { error: client.maskSecrets(String(eC && eC.message)) };
+    }
+
+    // lgeo 를 얻었으면 그것을 쓰는 형태를 최우선 후보로 넣는다
+    if (realLgeo) {
+      variants.unshift({
+        key: 'D',
+        label: 'clusterList 에서 받은 실제 lgeo 사용 (itemId=lgeo)',
+        opts: { itemId: realLgeo.lgeo, lgeo: realLgeo.lgeo, totCnt: isFinite(Number(realLgeo.count)) ? Number(realLgeo.count) : undefined }
+      });
+    }
     var chosen = null;
     var attempts = [];
 
