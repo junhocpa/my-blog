@@ -1,0 +1,64 @@
+{
+  "_readme": "여의도 전세 매물 수집기 설정 파일. 사용자가 편집하는 유일한 파일이다. JSON은 주석을 지원하지 않으므로 각 묶음에 _comment 키로 설명을 달았다.",
+
+  "regions": {
+    "_comment": "동 이름으로 적는다. 스크립트가 regions/list에서 cortarNo를 찾아 하위 법정동(당산동1가~6가 등)까지 접두어 매칭으로 자동 확장한다. available_but_off의 항목을 include로 옮기면 대상에 추가된다.",
+    "sido": "서울특별시",
+    "include": [
+      { "gu": "영등포구", "dong": "여의도동" },
+      { "gu": "영등포구", "dong": "당산동" },
+      { "gu": "영등포구", "dong": "문래동" },
+      { "gu": "영등포구", "dong": "영등포동" },
+      { "gu": "영등포구", "dong": "양평동" },
+      { "gu": "영등포구", "dong": "신길동" },
+      { "gu": "동작구", "dong": "노량진동" }
+    ],
+    "available_but_off": [
+      { "gu": "마포구", "dong": "도화동" },
+      { "gu": "마포구", "dong": "공덕동" },
+      { "gu": "동작구", "dong": "흑석동" }
+    ],
+    "manual": [],
+    "_manual_comment": "regions/list가 Authorization을 요구해 자동 해석이 불가능할 때만 사용한다(spec V3 실패 대응). 브라우저에서 1회 확인한 값을 { \"cortarNo\": \"1156011000\", \"name\": \"여의도동\", \"gu\": \"영등포구\", \"centerLat\": 37.5225, \"centerLon\": 126.9245 } 형식으로 넣으면 드릴다운을 건너뛴다. cortarNo는 시크릿이 아니므로 커밋해도 무해하다.",
+    "cacheTtlDays": 7
+  },
+
+  "criteria": {
+    "_comment": "tradeType: A1 매매 / B1 전세 / B2 월세 / B3 단기임대. realEstateType 요청 코드: APT 아파트 / OPST 오피스텔. 금액 단위는 만원(40000 = 4억).",
+    "tradeType": ["B1"],
+    "realEstateType": ["APT", "OPST"],
+    "depositMin": 40000,
+    "depositMax": 70000,
+    "areaMinM2": null,
+    "areaMaxM2": null,
+    "excludeNonResidentialOfficetel": true,
+    "officetelMinExclusiveM2": 30,
+    "selfFilterDeposit": true,
+    "_selfFilterDeposit_comment": "서버(wprcMin/wprcMax) 필터를 신뢰하지 않고 응답의 prc로 한 번 더 걸러낸다. 서버 필터가 동작하지 않으면 걸러진 건수가 보고되므로 스펙 오류를 즉시 알 수 있다. 끄지 않는 것을 권한다."
+  },
+
+  "politeness": {
+    "_comment": "예의 있는 수집 상한. 임의로 올리지 말 것. collect.js가 하드 상한(지연 1000ms 이상, 지역당 페이지 10, 대상 코드 40개, 1회 300요청)으로 강제 클램프한다.",
+    "delayMsBetweenRequests": 2000,
+    "delayJitterMs": 800,
+    "maxPagesPerRegion": 5,
+    "maxRegionCodes": 25,
+    "maxRequestsPerRun": 150,
+    "maxRetries": 3,
+    "retryBackoffMs": 5000,
+    "requestTimeoutMs": 15000
+  },
+
+  "map": {
+    "_comment": "모바일 API가 요구하는 지도 bbox 계산 파라미터. 동 하나를 넉넉히 덮는 크기이며, bbox가 인접 동을 물어와도 응답 cortarNo로 2차 필터링하므로 결과는 오염되지 않는다.",
+    "zoom": 13,
+    "bboxDeltaLat": 0.012,
+    "bboxDeltaLon": 0.02
+  },
+
+  "output": {
+    "_comment": "history.json 보관 정책. runs는 최근 historyMaxSnapshots회만 남기고, 사라진 매물은 keepDisappearedDays 경과 후 제거한다.",
+    "historyMaxSnapshots": 60,
+    "keepDisappearedDays": 14
+  }
+}
