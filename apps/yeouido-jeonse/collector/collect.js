@@ -588,112 +588,104 @@ async function runVerify(loaded) {
     // ---------- V1 / V4 / V5 / V8: articleList (필터 적용) ----------
     currentStep = 'V1';
 
-    /* 1단계: clusterList 로 lgeo 를 얻는다.
-       스펙 조사에서 이 단계가 빠져 있어 articleList 가 본문 `null` 을 돌려줬다.
-       여기서도 응답 원문을 남긴다 — 추측하지 않고 원문으로 판단하기 위해서다. */
-    log('[V1-1단계] clusterList 로 매물 묶음(lgeo) 조회 …');
-    var clusterUrl = client.buildClusterListUrl(articleListParams(cfg, targetRegion, 1, true));
-    log('     ' + clusterUrl);
-    var mapRef = client.mapReferer(articleListParams(cfg, targetRegion, 1, true));
-    var clusterRaw = await c.get(clusterUrl, { label: 'clusterList', expect: 'text', referer: mapRef });
-    var clusterText = String(clusterRaw.text == null ? '' : clusterRaw.text);
-    var clusterPath = path.join(RUN_LOGS_DIR, 'last-raw-cluster.txt');
-    try {
-      fs.writeFileSync(clusterPath, '요청 URL:\n' + clusterUrl + '\n\n응답 원문:\n' + client.maskSecrets(clusterText));
-    } catch (eCW) { /* 로그 저장 실패가 검증을 막지는 않는다 */ }
-
-    var clusterJson = null;
-    try { clusterJson = clusterText.length ? JSON.parse(clusterText) : null; } catch (eCP) { clusterJson = null; }
-
-    // lgeo 가 들어있을 만한 배열을 찾는다(응답 키 이름이 스펙과 다를 수 있으므로 넓게 훑는다).
-    var clusters = [];
-    (function collectClusters(node, depth) {
-      if (!node || depth > 4) return;
-      if (Array.isArray(node)) {
-        node.forEach(function (v) { collectClusters(v, depth + 1); });
-        return;
+    /* URL 형태 후보를 순서대로 시험한다.
+       clusterList·articleList 가 모두 200 + `null` 을 돌려줬고, 원인 후보가
+       여러 개였다. 한 번의 실행으로 어느 형태가 동작하는지 가리기 위해
+       후보를 차례로 시험하고 첫 성공을 채택한다. 요청 예산 안에서만 돈다. */
+    var variants = [
+      {
+        key: 'A',
+        label: '근거 기반 최소형 (view/sameAddressGroup/보증금필터 없음, sort=rank)',
+        opts: {}
+      },
+      {
+        key: 'B',
+        label: 'A + 보증금 필터(wprcMin/wprcMax)',
+        opts: { withDepositFilter: true }
+      },
+      {
+        key: 'C',
+        label: '이전에 실패한 옛 형태 (view=atcl + sameAddressGroup + 보증금필터)',
+        opts: { legacyShape: true, withDepositFilter: true }
       }
-      if (typeof node !== 'object') return;
-      if (node.lgeo) clusters.push(node);
-      Object.keys(node).forEach(function (k) { collectClusters(node[k], depth + 1); });
-    })(clusterJson, 0);
+    ];
 
-    var clusterHead = client.maskSecrets(clusterText.slice(0, 500)).replace(/\s+/g, ' ');
-    log('     응답 ' + clusterText.length + '바이트, lgeo 발견 ' + clusters.length + '개');
-    log('     원문 앞부분: ' + (clusterHead || '(없음)'));
-    log('     전체 원문: ' + clusterPath);
+    var mapRef = client.mapReferer(articleListParams(cfg, targetRegion, 1, false));
+    var chosen = null;
+    var attempts = [];
 
-    if (!clusters.length) {
-      set('V1', 'FAIL',
-        'clusterList 에서 lgeo 를 찾지 못했다. 응답 ' + clusterText.length + '바이트 / 앞부분: ' + (clusterHead || '(없음)'));
+    for (var vi = 0; vi < variants.length; vi++) {
+      var vr = variants[vi];
+      var params = articleListParams(cfg, targetRegion, 1, false);
+      Object.keys(vr.opts).forEach(function (k) { params[k] = vr.opts[k]; });
+      var vUrl = client.buildArticleListUrl(params);
+
+      log('[V1-' + vr.key + '] ' + vr.label);
+      log('     ' + vUrl);
+
+      var vRaw;
+      try {
+        vRaw = await c.get(vUrl, { label: 'articleList 형태 ' + vr.key, expect: 'text', referer: mapRef });
+      } catch (eV) {
+        // 429/403 이면 더 시도하지 않고 물러난다
+        if (eV && (eV.status === 429 || eV.status === 403)) throw eV;
+        attempts.push({ key: vr.key, label: vr.label, error: client.maskSecrets(String(eV && eV.message)) });
+        log('     → 실패: ' + (eV && eV.message));
+        continue;
+      }
+
+      var vText = String(vRaw.text == null ? '' : vRaw.text);
+      var vJson = null;
+      try { vJson = vText.length ? JSON.parse(vText) : null; } catch (eVP) { vJson = null; }
+      var vBody = vJson && Array.isArray(vJson.body) ? vJson.body : null;
+      var vShape = vJson === null
+        ? (vText.length ? 'JSON 아님' : '빈 응답')
+        : Array.isArray(vJson) ? '배열'
+        : typeof vJson === 'object' ? (Object.keys(vJson).length ? '객체 키: ' + Object.keys(vJson).join(',') : '빈 객체 {}')
+        : String(typeof vJson) + '(' + JSON.stringify(vJson) + ')';
+
+      attempts.push({
+        key: vr.key, label: vr.label, url: vUrl, status: vRaw.status,
+        bytes: vText.length, shape: vShape, bodyCount: vBody ? vBody.length : null
+      });
+      log('     → HTTP ' + vRaw.status + ', ' + vText.length + '바이트, 형태: ' + vShape +
+        (vBody ? ', 매물 ' + vBody.length + '건' : ''));
+
+      try {
+        fs.writeFileSync(path.join(RUN_LOGS_DIR, 'last-raw-v1-' + vr.key + '.txt'),
+          '요청 URL:\n' + vUrl + '\n\n응답 원문:\n' + client.maskSecrets(vText));
+      } catch (eVW) { /* 로그 저장 실패는 무시 */ }
+
+      if (vBody) { chosen = { variant: vr, url: vUrl, envelope: vJson, body: vBody, raw: vText }; break; }
+    }
+
+    record.variantAttempts = attempts;
+
+    if (!chosen) {
+      set('V1', 'FAIL', '후보 ' + attempts.length + '개 형태를 모두 시험했으나 body 배열을 받지 못했다. ' +
+        attempts.map(function (a) { return a.key + '=' + (a.shape || a.error); }).join(' / '));
       log('');
-      log('  ▶ 1) 먼저 이걸 해보세요 (가장 쉽습니다) — 위 요청 URL 을 그대로 크롬 주소창에 붙여 넣고 엽니다.');
-      log('       · 매물 정보(JSON)가 보이면 → 파라미터는 맞고 쿠키/헤더가 문제입니다');
-      log('       · null 만 보이면 → URL 자체가 틀린 것입니다');
-      log('       어느 쪽인지만 알려주셔도 원인이 좁혀집니다.');
+      log('  ── 시험한 형태와 결과 ──────────────────────');
+      attempts.forEach(function (a) {
+        log('   ' + a.key + ') ' + (a.shape || a.error) + '  — ' + a.label);
+      });
       log('');
-      log('  ▶ 2) 확실한 방법 — 브라우저의 실제 요청을 떠오는 것입니다.');
+      log('  세 형태 모두 실패했습니다. 남은 원인은 쿠키·세션일 가능성이 큽니다.');
+      log('  ▶ 브라우저의 실제 요청을 떠와 주세요 (이것이 확실합니다):');
       log('    크롬에서 m.land.naver.com → 여의도동 아파트 전세 검색 → F12 → Network 탭 →');
-      log('    목록을 스크롤 → articleList 요청 우클릭 → Copy → Copy as cURL (bash) → 그 내용을 알려주세요.');
+      log('    목록을 스크롤 → articleList 요청 우클릭 → Copy → Copy as cURL (bash)');
       log('    (Cookie 줄은 지우고 보내셔도 됩니다)');
-      throw client.ApiError('parse', 'clusterList 에서 lgeo 를 얻지 못했다 (원문은 ' + clusterPath + ' 에 저장)');
+      throw client.ApiError('parse', '어떤 URL 형태로도 매물 목록을 받지 못했다');
     }
 
-    var cluster0 = clusters[0];
-    log('     사용할 묶음: lgeo=' + cluster0.lgeo + (cluster0.count != null ? ' (매물 ' + cluster0.count + '건)' : ''));
+    log('');
+    log('  ★ 동작하는 형태를 찾았습니다: ' + chosen.variant.key + ') ' + chosen.variant.label);
+    var filteredUrl = chosen.url;
+    var envelope = chosen.envelope;
+    var body = chosen.body;
+    var usedDepositFilter = chosen.variant.opts.withDepositFilter === true;
+    record.chosenVariant = { key: chosen.variant.key, label: chosen.variant.label, url: chosen.url };
 
-    log('[V1-2단계] articleList 1회 요청 (보증금 필터 적용) …');
-    var filteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, true, cluster0));
-    log('     ' + filteredUrl);
-    /* 먼저 원문(text)으로 받는다. 스펙이 틀렸을 때 "구조가 다르다"는 말만으로는
-       무엇이 틀렸는지 알 수 없다. 응답 원문을 남겨야 진단이 가능하다. */
-    var listRaw = await c.get(filteredUrl, { label: 'articleList (wprc 필터 있음)', expect: 'text', referer: mapRef });
-    var rawText = String(listRaw.text == null ? '' : listRaw.text);
-    var rawPath = path.join(RUN_LOGS_DIR, 'last-raw-v1.txt');
-    try {
-      fs.writeFileSync(rawPath, '요청 URL:\n' + filteredUrl + '\n\n응답 원문:\n' + client.maskSecrets(rawText));
-    } catch (eW) { /* 로그 저장 실패가 검증을 막지는 않는다 */ }
-
-    var envelope = null;
-    var parseErr = null;
-    try {
-      envelope = rawText.length ? JSON.parse(rawText) : null;
-    } catch (eP) {
-      parseErr = eP;
-    }
-
-    var body = envelope && Array.isArray(envelope.body) ? envelope.body : null;
-    if (!body) {
-      var shape = envelope === null
-        ? (parseErr ? 'JSON 이 아님' : '빈 응답(길이 0)')
-        : Array.isArray(envelope)
-          ? '배열(길이 ' + envelope.length + ')'
-          : typeof envelope === 'object'
-            ? (Object.keys(envelope).length ? '객체 키: ' + Object.keys(envelope).join(', ') : '빈 객체 {}')
-            : typeof envelope;
-      var head = client.maskSecrets(rawText.slice(0, 400)).replace(/\s+/g, ' ');
-      set('V1', 'FAIL', 'body 배열이 없다. 응답 형태 = ' + shape + ' / 원문 앞부분: ' + (head || '(없음)'));
-      log('');
-      log('  ── 응답 진단 ──────────────────────────────────');
-      log('  HTTP 상태 : ' + listRaw.status + ' (200이면 차단이 아니다)');
-      log('  응답 길이 : ' + rawText.length + ' 바이트');
-      log('  응답 형태 : ' + shape);
-      log('  원문 앞부분: ' + (head || '(없음)'));
-      log('  전체 원문 : ' + rawPath);
-      log('');
-      if (listRaw.status === 200 && (rawText.length === 0 || shape === '빈 객체 {}')) {
-        log('  200인데 내용이 비었다 = 차단이 아니라 요청 파라미터가 부족하거나');
-        log('  이 엔드포인트가 요구하는 값이 빠졌을 가능성이 큽니다.');
-        log('');
-        log('  ▶ 가장 확실한 해결책: 브라우저에서 실제 요청을 그대로 떠 오는 것입니다.');
-        log('    1) 크롬에서 https://m.land.naver.com 접속 → 여의도동 아파트 전세로 검색');
-        log('    2) F12 → Network 탭 → 목록을 아래로 스크롤');
-        log('    3) articleList 라는 요청을 우클릭 → Copy → Copy as cURL (bash)');
-        log('    4) 그 내용을 붙여서 알려주면 빠진 파라미터를 정확히 맞출 수 있습니다.');
-        log('    (쿠키가 포함될 수 있으니, 붙여넣기 전 Cookie 줄은 지우거나 가려도 됩니다)');
-      }
-      throw client.ApiError('parse', 'articleList 응답에 body 배열이 없다 (원문은 ' + rawPath + ' 에 저장)');
-    }
     set(
       'V1',
       'PASS',
@@ -755,62 +747,49 @@ async function runVerify(loaded) {
       set('V8', 'PASS', 'bbox 가 대상 동을 덮는다(오히려 넓다 — V5 참고)');
     }
 
-    // ---------- V2: 보증금 필터 유무 비교 ----------
+    // ---------- V2: 보증금 필터 지원 여부 ----------
+    /* 추가 요청을 보내지 않는다. 위에서 형태 후보를 시험할 때
+       "필터 없음(A)" 과 "필터 있음(B)" 을 이미 관측했으므로 그 결과로 판단한다. */
     currentStep = 'V2';
-    log('[V2] 보증금 필터 없는 요청과 비교 …');
-    var unfilteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, false, cluster0));
-    log('     ' + unfilteredUrl);
-    var plainRes = await c.get(unfilteredUrl, { label: 'articleList (wprc 필터 없음)' });
-    var plainBody = plainRes.json && Array.isArray(plainRes.json.body) ? plainRes.json.body : [];
-    function prcList(arr) {
-      return arr
-        .map(function (it) {
-          return Number(it.prc);
-        })
-        .filter(function (n) {
-          return isFinite(n);
-        });
-    }
-    var fp = prcList(body);
-    var pp = prcList(plainBody);
-    var min = cfg.criteria.depositMin;
-    var max = cfg.criteria.depositMax;
-    var outOfRangeFiltered = fp.filter(function (v) {
-      return v < min || v > max;
+    var attemptA = null;
+    var attemptB = null;
+    attempts.forEach(function (a) {
+      if (a.key === 'A') attemptA = a;
+      if (a.key === 'B') attemptB = a;
     });
-    var outOfRangePlain = pp.filter(function (v) {
-      return v < min || v > max;
-    });
+
+    var chosenPrc = (body || []).map(function (it) { return Number(it.prc); })
+      .filter(function (n) { return isFinite(n); });
+    var minDep = cfg.criteria.depositMin;
+    var maxDep = cfg.criteria.depositMax;
+    var outOfRange = chosenPrc.filter(function (v) { return v < minDep || v > maxDep; });
+
     record.depositFilter = {
-      filteredCount: body.length,
-      unfilteredCount: plainBody.length,
-      filteredPrcRange: fp.length ? [Math.min.apply(null, fp), Math.max.apply(null, fp)] : null,
-      unfilteredPrcRange: pp.length ? [Math.min.apply(null, pp), Math.max.apply(null, pp)] : null,
-      outOfRangeInFiltered: outOfRangeFiltered.length,
-      outOfRangeInUnfiltered: outOfRangePlain.length
+      chosenVariant: chosen.variant.key,
+      usedDepositFilter: usedDepositFilter,
+      count: body.length,
+      prcRange: chosenPrc.length ? [Math.min.apply(null, chosenPrc), Math.max.apply(null, chosenPrc)] : null,
+      outOfRangeCount: outOfRange.length,
+      attemptA: attemptA ? { shape: attemptA.shape, bodyCount: attemptA.bodyCount } : null,
+      attemptB: attemptB ? { shape: attemptB.shape, bodyCount: attemptB.bodyCount } : null
     };
-    if (fp.length === 0 && pp.length === 0) {
-      set('V2', 'SKIP', '양쪽 모두 0건이라 비교할 수 없다');
-    } else if (outOfRangeFiltered.length > 0) {
-      set(
-        'V2',
-        'FAIL',
-        '필터를 걸었는데도 범위 밖 ' + outOfRangeFiltered.length + '건이 왔다 (예: ' + outOfRangeFiltered[0] +
-          '만원). wprcMin/wprcMax 가 보증금 필터가 아닐 수 있다 — config 의 selfFilterDeposit 로 자체 필터가 동작하므로 결과는 안전하지만 요청량이 늘어난다. 스펙 수정 필요'
-      );
-    } else if (outOfRangePlain.length > 0) {
-      set(
-        'V2',
-        'PASS',
-        '필터 있음 ' + body.length + '건(모두 ' + min + '~' + max + '만원 범위) vs 필터 없음 ' + plainBody.length +
-          '건(범위 밖 ' + outOfRangePlain.length + '건 포함) → wprc 필터가 실제로 동작한다'
-      );
+
+    if (!usedDepositFilter) {
+      set('V2', 'SKIP',
+        '보증금 필터를 보내지 않는 형태(' + chosen.variant.key + ')가 동작했다. ' +
+        'wprcMin/wprcMax 지원 여부는 확인하지 않았다 — 금액은 수집 후 자체 필터로 거른다' +
+        (attemptB && attemptB.bodyCount == null
+          ? ' (필터를 넣은 형태 B 는 ' + attemptB.shape + ' 로 실패 → 필터 파라미터가 오히려 응답을 막는다)'
+          : ''));
+      log('  · 보증금은 수집 후 자체 필터로 걸러낸다 (요청에 금액 조건을 넣지 않음)');
+    } else if (outOfRange.length > 0) {
+      set('V2', 'FAIL',
+        '필터를 걸었는데도 범위 밖 ' + outOfRange.length + '건이 왔다 (예: ' + outOfRange[0] +
+        '만원). wprcMin/wprcMax 는 보증금 필터가 아니다 — 자체 필터가 결과를 보호하지만 스펙 수정이 필요하다');
     } else {
-      set(
-        'V2',
-        'SKIP',
-        '필터 없는 요청에도 범위 밖 매물이 없어(모두 ' + min + '~' + max + '만원) 필터 동작을 증명할 수 없다. 보증금 범위를 좁혀 다시 실행하면 판단 가능'
-      );
+      set('V2', 'PASS',
+        '보증금 필터 형태(B)가 동작하고, 받은 ' + body.length + '건이 모두 ' + minDep + '~' + maxDep + '만원 범위다' +
+        (attemptA && attemptA.bodyCount == null ? ' (필터 없는 형태 A 는 ' + attemptA.shape + ' 로 실패)' : ''));
     }
   } catch (e) {
     // 여기서 나오는 것은 위 단계에서 던진 정돈된 ApiError 이거나 예상 못한 예외다.

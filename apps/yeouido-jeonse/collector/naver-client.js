@@ -164,14 +164,28 @@ function round6(n) {
 function buildArticleListUrl(o) {
   var bbox = makeBbox(Number(o.centerLat), Number(o.centerLon), Number(o.dLat), Number(o.dLon));
   var q = new URLSearchParams();
-  /* 모바일 프런트엔드가 실제로 보내는 파라미터들. 값이 비어 있어도 키 자체를
-     요구하는 엔드포인트가 있어서, 빈 값으로라도 함께 보낸다.
-     (이 엔드포인트가 200 + 빈 응답을 돌려주는 원인 후보였다) */
+
+  /* ⚠️ 이 형태는 추측이 아니라, 서로 독립적인 6개 이상의 공개 구현체가 동일하게
+     사용하는 형태를 그대로 따른 것이다. 예:
+       ?itemId=&mapKey=&lgeo=&showR0=&rletTpCd=APT&tradTpCd=A1
+        &z=14&lat=..&lon=..&btm=..&lft=..&top=..&rgt=..
+        &totCnt=2176&cortarNo=1135010500&sort=rank&page=1
+
+     이전 구현이 HTTP 200 + `null` 을 받은 원인 후보(모두 실제 구현체에는 없는 것들):
+       - view=atcl        → articleList 에는 없다. clusterList 에만 쓰인다
+       - sameAddressGroup → 쿼리스트링에 넣지 않는다
+       - wprcMin/wprcMax  → 어떤 구현체도 쓰지 않는다. 금액은 받아서 직접 거른다 */
+
+  // 빈 값이어도 키 자체는 보낸다 (구현체 공통)
   q.set('itemId', o.itemId == null ? '' : String(o.itemId));
   q.set('mapKey', o.mapKey == null ? '' : String(o.mapKey));
   q.set('lgeo', o.lgeo == null ? '' : String(o.lgeo));
   q.set('showR0', '');
-  q.set('view', 'atcl');
+
+  if (o.legacyShape === true) q.set('view', 'atcl'); // 실패했던 옛 형태 재현용(비교 검증)
+
+  if (o.realEstateType && o.realEstateType.length) q.set('rletTpCd', o.realEstateType.join(':'));
+  if (o.tradeType && o.tradeType.length) q.set('tradTpCd', o.tradeType.join(':'));
   q.set('z', String(o.zoom));
   q.set('lat', String(round6(Number(o.centerLat))));
   q.set('lon', String(round6(Number(o.centerLon))));
@@ -179,18 +193,21 @@ function buildArticleListUrl(o) {
   q.set('lft', String(bbox.lft));
   q.set('top', String(bbox.top));
   q.set('rgt', String(bbox.rgt));
-  if (o.cortarNo) q.set('cortarNo', String(o.cortarNo));
-  if (o.realEstateType && o.realEstateType.length) q.set('rletTpCd', o.realEstateType.join(':'));
-  if (o.tradeType && o.tradeType.length) q.set('tradTpCd', o.tradeType.join(':'));
-  // 전세 보증금 필터는 wprcMin/wprcMax다. dprc*(매매가)와 혼동하면 조용히 엉뚱한 결과가 나온다.
-  if (o.withDepositFilter !== false) {
+
+  if (isNum(o.areaMinM2)) q.set('spcMin', String(o.areaMinM2));
+  if (isNum(o.areaMaxM2)) q.set('spcMax', String(o.areaMaxM2));
+
+  // 보증금 필터는 기본적으로 보내지 않는다. 어떤 구현체도 쓰지 않아 지원 여부가 불확실하고,
+  // 보내면 null 응답의 원인이 될 수 있다. 금액은 수집 후 직접 거른다.
+  if (o.withDepositFilter === true) {
     if (isNum(o.depositMin)) q.set('wprcMin', String(o.depositMin));
     if (isNum(o.depositMax)) q.set('wprcMax', String(o.depositMax));
   }
-  if (isNum(o.areaMinM2)) q.set('spcMin', String(o.areaMinM2));
-  if (isNum(o.areaMaxM2)) q.set('spcMax', String(o.areaMaxM2));
-  // 동일주소 매물을 묶지 않고 개별로 받는다 (묶으면 개별 매물이 감춰진다)
-  q.set('sameAddressGroup', o.sameAddressGroup === true ? 'true' : 'false');
+
+  if (isNum(o.totCnt)) q.set('totCnt', String(o.totCnt));
+  if (o.cortarNo) q.set('cortarNo', String(o.cortarNo));
+  q.set('sort', o.sort ? String(o.sort) : 'rank');
+  if (o.legacyShape === true) q.set('sameAddressGroup', 'false');
   q.set('page', String(o.page || 1));
   return MOBILE_ORIGIN + ARTICLE_LIST_PATH + '?' + q.toString();
 }
@@ -199,8 +216,9 @@ function buildArticleListUrl(o) {
 function buildClusterListUrl(o) {
   var bbox = makeBbox(Number(o.centerLat), Number(o.centerLon), Number(o.dLat), Number(o.dLon));
   var q = new URLSearchParams();
+  /* 실제 구현체 형태: pCortarNo={줌}_{법정동코드}, addon/bAddon/isOnlyIsale 포함.
+     plain cortarNo 는 쓰지 않는다. 이전에 빈 pCortarNo 를 보내 null 을 받았다. */
   q.set('view', 'atcl');
-  q.set('cortarNo', String(o.cortarNo || ''));
   if (o.realEstateType && o.realEstateType.length) q.set('rletTpCd', o.realEstateType.join(':'));
   if (o.tradeType && o.tradeType.length) q.set('tradTpCd', o.tradeType.join(':'));
   q.set('z', String(o.zoom));
@@ -210,13 +228,17 @@ function buildClusterListUrl(o) {
   q.set('lft', String(bbox.lft));
   q.set('top', String(bbox.top));
   q.set('rgt', String(bbox.rgt));
-  if (o.withDepositFilter !== false) {
+  // clusterList 도 마찬가지로 보증금 필터는 기본 미전송 (실제 구현체에 없다)
+  if (o.withDepositFilter === true) {
     if (isNum(o.depositMin)) q.set('wprcMin', String(o.depositMin));
     if (isNum(o.depositMax)) q.set('wprcMax', String(o.depositMax));
   }
   if (isNum(o.areaMinM2)) q.set('spcMin', String(o.areaMinM2));
   if (isNum(o.areaMaxM2)) q.set('spcMax', String(o.areaMaxM2));
-  q.set('pCortarNo', '');
+  q.set('pCortarNo', String(o.zoom) + '_' + String(o.cortarNo || ''));
+  q.set('addon', 'COMPLEX');
+  q.set('bAddon', 'COMPLEX');
+  q.set('isOnlyIsale', 'false');
   return MOBILE_ORIGIN + CLUSTER_LIST_PATH + '?' + q.toString();
 }
 
