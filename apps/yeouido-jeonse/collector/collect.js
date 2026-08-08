@@ -441,7 +441,39 @@ async function runVerify(loaded) {
     // ---------- V7: robots.txt ----------
     currentStep = 'V7';
     log('[V7] robots.txt 확인 …');
-    var robots = await c.get(client.ROBOTS_URL, { label: 'robots.txt', expect: 'text' });
+    var robots = null;
+    try {
+      robots = await c.get(client.ROBOTS_URL, { label: 'robots.txt', expect: 'text' });
+    } catch (eRobots) {
+      var rStatus = (eRobots && eRobots.status) || null;
+      // 403/429 는 "네이버가 우리를 거부했다"는 신호다 → 물러난다.
+      if (rStatus === 403 || rStatus === 429) throw eRobots;
+      // 404 등 "파일이 없다"는 응답은 차단이 아니다.
+      // robots.txt 표준(RFC 9309)에서 robots.txt 부재는 "제한 없음"으로 해석한다.
+      if (rStatus && rStatus >= 400 && rStatus < 500) {
+        record.robots = { missing: true, status: rStatus, targetPath: client.ARTICLE_LIST_PATH };
+        set(
+          'V7',
+          'PASS',
+          'robots.txt 가 없다 (HTTP ' + rStatus + ') → 이 호스트에 공표된 크롤링 제한 규칙이 없다는 뜻이다. ' +
+            'RFC 9309 에 따라 "제한 없음"으로 해석하고 계속한다.'
+        );
+        log('  · robots.txt 없음 (HTTP ' + rStatus + ') — 공표된 제한 규칙이 없다는 뜻이다. 계속한다.');
+        log('    (수집 상한·지연은 robots.txt 와 무관하게 그대로 적용된다)');
+      } else {
+        // 5xx·네트워크 오류는 "확인 실패"다. 차단으로 단정하지 않고, 확인불가로 남기고 계속한다.
+        record.robots = {
+          unknown: true,
+          status: rStatus,
+          error: client.maskSecrets((eRobots && eRobots.message) || String(eRobots)),
+          targetPath: client.ARTICLE_LIST_PATH
+        };
+        set('V7', 'SKIP', 'robots.txt 를 확인할 수 없었다 (' + (rStatus || '네트워크 오류') + ') — 나중에 다시 확인할 것');
+        log('  · robots.txt 확인 실패 (' + (rStatus || '네트워크 오류') + ') — 확인불가로 남기고 계속한다.');
+      }
+    }
+
+    if (robots) {
     var verdict = robotsBlocks(robots.text, client.ARTICLE_LIST_PATH);
     record.robots = {
       disallowRules: verdict.disallowRules,
@@ -461,6 +493,7 @@ async function runVerify(loaded) {
       throw client.ApiError('blocked', fatal, { robots: true });
     }
     set('V7', 'PASS', 'User-agent:* 의 Disallow 중 목록 경로에 걸리는 규칙 없음 (규칙 ' + verdict.disallowRules.length + '개 확인)');
+    }
 
     // ---------- V3: regions/list ----------
     currentStep = 'V3';
@@ -681,10 +714,17 @@ async function runVerify(loaded) {
       log('  run-logs/verification.json 을 상위 세션(또는 개발자)에게 전달해 스펙을 갱신해야 합니다.');
     }
 
-    if (get('V1').result !== 'PASS') {
+    // V1의 상태를 정확히 구분해 보고한다.
+    // 시도조차 못 한 것(SKIP)을 "차단"으로 단정하면 원인을 엉뚱한 곳에서 찾게 된다.
+    var v1 = get('V1');
+    if (v1.result === 'FAIL') {
       log('');
-      log('  ★ 모바일 API 차단 — D6에 따라 중단. 상위 세션에 보고 필요');
-      log('    (V1 이 통과하지 못했으므로 이 도구는 아직 수집을 시작할 수 없습니다)');
+      log('  ★ 모바일 API 가 응답을 거부했습니다 (V1 FAIL) — D6에 따라 수집을 시작하지 않습니다.');
+      log('    이 결과를 그대로 보고해 주세요.');
+    } else if (v1.result !== 'PASS') {
+      log('');
+      log('  ★ 모바일 API(V1)는 아직 시험하지 못했습니다 — 앞 단계(' + currentStep + ')에서 멈췄기 때문입니다.');
+      log('    따라서 "차단됐다"고 단정할 수 없습니다. 앞 단계의 원인을 먼저 해결해야 합니다.');
     }
   }
 
@@ -1133,9 +1173,14 @@ async function main() {
   }
 }
 
+/* 종료 코드는 process.exit() 대신 process.exitCode 로 넘긴다.
+   Windows에서 process.exit() 가 fetch(undici)의 keep-alive 소켓이 닫히는 도중에 끼면
+   libuv가 "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c" 로
+   죽는다. 결과 출력은 이미 끝난 뒤라 사용자에게는 원인 없는 크래시로만 보인다.
+   exitCode 를 세우고 이벤트 루프가 자연히 비워지도록 두면 이 크래시가 나지 않는다. */
 main()
   .then(function (code) {
-    process.exit(typeof code === 'number' ? code : 0);
+    process.exitCode = typeof code === 'number' ? code : 0;
   })
   .catch(function (e) {
     // 사용자에게 스택 트레이스를 토하지 않는다. 디버깅이 필요하면 YJ_DEBUG=1.
@@ -1152,5 +1197,5 @@ main()
     if (process.env.YJ_DEBUG === '1' && e && e.stack) {
       process.stderr.write('\n' + e.stack + '\n');
     }
-    process.exit(1);
+    process.exitCode = 1;
   });
