@@ -266,13 +266,18 @@ function createClient(opts) {
   var politeness = opts.politeness;
   var log = opts.log || function () {};
   var dryRun = !!opts.dryRun;
+  /* 쿠키. 모든 URL 형태가 200 + `null` 을 돌려주는 것을 확인했으므로
+     남은 원인은 세션이다. 쿠키는 시크릿이므로 저장소에 커밋하지 않는다
+     (collector/.gitignore 의 .secrets.json, 또는 환경변수로만 전달). */
+  var cookie = typeof opts.cookie === 'string' && opts.cookie.trim() ? opts.cookie.trim() : null;
 
   var state = {
     requests: 0,          // 실제로 보낸 요청 수
     aborted: false,       // 429/403을 만나 이번 실행을 포기했는가
     abortReason: null,
     lastRequestAt: 0,
-    urls: []              // 조립된(또는 조립될) URL 기록 — dry-run 출력·로그용
+    urls: [],             // 조립된(또는 조립될) URL 기록 — dry-run 출력·로그용
+    cookieUsed: !!cookie  // 쿠키를 실었는지 여부만 (값은 절대 노출하지 않는다)
   };
 
   function remainingBudget() {
@@ -292,6 +297,13 @@ function createClient(opts) {
     if (need > 0) await sleep(need);
   }
 
+  function buildHeaders(referer) {
+    var h = Object.assign({}, MOBILE_HEADERS);
+    if (referer) h.Referer = referer;
+    if (cookie) h.Cookie = cookie;
+    return h;
+  }
+
   async function rawFetch(url, expect, referer) {
     var controller = new AbortController();
     var timer = setTimeout(function () {
@@ -300,7 +312,7 @@ function createClient(opts) {
     try {
       var res = await fetch(url, {
         method: 'GET',
-        headers: referer ? Object.assign({}, MOBILE_HEADERS, { Referer: referer }) : MOBILE_HEADERS,
+        headers: buildHeaders(referer),
         redirect: 'follow',
         signal: controller.signal
       });

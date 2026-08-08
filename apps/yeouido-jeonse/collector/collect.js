@@ -36,6 +36,7 @@ var HISTORY_PATH = path.join(DATA_DIR, 'history.json');
 var REGION_CACHE_PATH = path.join(DATA_DIR, 'regions.cache.json');
 var LAST_RUN_PATH = path.join(RUN_LOGS_DIR, 'last-run.json');
 var VERIFICATION_PATH = path.join(RUN_LOGS_DIR, 'verification.json');
+var SECRETS_PATH = path.join(__dirname, '.secrets.json');
 var RAW_SAMPLE_PATH = path.join(RUN_LOGS_DIR, 'last-raw-sample.json');
 
 var SCHEMA_VERSION = 1;
@@ -193,6 +194,28 @@ function articleListParams(cfg, region, page, withDepositFilter, cluster) {
     areaMaxM2: cfg.criteria.areaMaxM2,
     withDepositFilter: withDepositFilter !== false
   };
+}
+
+/* 쿠키를 읽는다. 시크릿이므로 저장소에 커밋되지 않는 곳에서만 읽는다.
+   우선순위: 환경변수 NAVER_LAND_COOKIE > collector/.secrets.json 의 cookie
+   (.secrets.json 은 collector/.gitignore 로 제외되어 있다) */
+function loadCookie() {
+  var envCookie = process.env.NAVER_LAND_COOKIE;
+  if (typeof envCookie === 'string' && envCookie.trim()) {
+    return { cookie: envCookie.trim(), source: '환경변수 NAVER_LAND_COOKIE' };
+  }
+  try {
+    if (fs.existsSync(SECRETS_PATH)) {
+      var raw = JSON.parse(fs.readFileSync(SECRETS_PATH, 'utf8'));
+      if (raw && typeof raw.cookie === 'string' && raw.cookie.trim()) {
+        return { cookie: raw.cookie.trim(), source: 'collector/.secrets.json' };
+      }
+      return { cookie: null, source: null, note: '.secrets.json 은 있으나 cookie 값이 비어 있다' };
+    }
+  } catch (e) {
+    return { cookie: null, source: null, note: '.secrets.json 을 읽을 수 없다: ' + e.message };
+  }
+  return { cookie: null, source: null };
 }
 
 // ==================================================================
@@ -396,7 +419,8 @@ async function runVerify(loaded) {
     maxRequestsPerRun: VERIFY_REQUEST_BUDGET,
     maxRetries: 0
   });
-  var c = client.createClient({ politeness: politeness, log: function () {} });
+  var secret = loadCookie();
+  var c = client.createClient({ politeness: politeness, log: function () {}, cookie: secret.cookie });
 
   var checks = [
     { id: 'V7', title: 'm.land.naver.com/robots.txt 가 목록 경로를 허용하는가', result: 'SKIP', detail: '' },
@@ -436,6 +460,13 @@ async function runVerify(loaded) {
 
   log('=== --verify — 스펙 라이브 검증 (요청 ' + VERIFY_REQUEST_BUDGET + '회 이하, 재시도 없음) ===');
   log('실패하면 파라미터를 바꿔가며 재시도하지 않고 즉시 멈춥니다.');
+  if (secret.cookie) {
+    log('쿠키: ' + secret.source + ' 에서 읽어 요청에 실었습니다 (값은 표시하지 않습니다)');
+  } else if (secret.note) {
+    log('쿠키: 사용하지 않음 — ' + secret.note);
+  } else {
+    log('쿠키: 사용하지 않음');
+  }
   line();
 
   var targetRegion = null;
@@ -670,11 +701,28 @@ async function runVerify(loaded) {
         log('   ' + a.key + ') ' + (a.shape || a.error) + '  — ' + a.label);
       });
       log('');
-      log('  세 형태 모두 실패했습니다. 남은 원인은 쿠키·세션일 가능성이 큽니다.');
-      log('  ▶ 브라우저의 실제 요청을 떠와 주세요 (이것이 확실합니다):');
+      if (!secret.cookie) {
+        log('  파라미터 조합을 바꿔도 응답이 같습니다 → URL 형태 문제가 아닙니다.');
+        log('  남은 원인은 쿠키(세션)입니다. 지금 실행은 쿠키 없이 보냈습니다.');
+        log('');
+        log('  ▶ 1) 쿠키를 넣어 다시 시도 (가장 유력):');
+        log('    ① 크롬에서 https://m.land.naver.com 접속 (로그인 안 해도 됩니다)');
+        log('    ② F12 → Network 탭 → 페이지를 새로 고침(F5)');
+        log('    ③ 목록 맨 위 요청 클릭 → Headers → Request Headers 에서 Cookie 줄을 찾아');
+        log('       값 전체를 복사');
+        log('    ④ ' + SECRETS_PATH);
+        log('       파일을 새로 만들고 아래처럼 저장 (이 파일은 커밋되지 않습니다):');
+        log('       { "cookie": "여기에 복사한 값 붙여넣기" }');
+        log('    ⑤ 이 명령을 다시 실행');
+        log('');
+        log('  ▶ 2) 그래도 안 되면 실제 요청을 그대로 떠와 주세요:');
+      } else {
+        log('  쿠키를 실었는데도 응답이 같습니다 → 쿠키만으로는 부족합니다.');
+        log('  ▶ 실제 요청을 그대로 떠와 주세요:');
+      }
       log('    크롬에서 m.land.naver.com → 여의도동 아파트 전세 검색 → F12 → Network 탭 →');
       log('    목록을 스크롤 → articleList 요청 우클릭 → Copy → Copy as cURL (bash)');
-      log('    (Cookie 줄은 지우고 보내셔도 됩니다)');
+      log('    (Cookie 줄은 지우고 보내셔도 파라미터 파악은 됩니다)');
       throw client.ApiError('parse', '어떤 URL 형태로도 매물 목록을 받지 못했다');
     }
 
@@ -897,7 +945,16 @@ async function runCollect(loaded) {
   });
   loaded.clampWarnings.forEach(warn);
 
-  var c = client.createClient({ politeness: politeness, log: log });
+  var secret = loadCookie();
+  var c = client.createClient({ politeness: politeness, log: log, cookie: secret.cookie });
+  if (secret.cookie) {
+    log('쿠키: ' + secret.source + ' 에서 읽어 요청에 실었다 (값은 표시하지 않는다)');
+  } else if (secret.note) {
+    log('쿠키: 사용하지 않음 — ' + secret.note);
+  } else {
+    log('쿠키: 사용하지 않음 (필요하면 아래 안내를 참고하세요)');
+  }
+  line();
   activeClient = c; // 예외로 죽어도 last-run.json 에 요청 수를 남기기 위해
 
   // ---------- 1) 지역 해석 ----------
