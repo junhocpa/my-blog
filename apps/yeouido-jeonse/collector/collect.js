@@ -243,14 +243,15 @@ async function runDryRun(loaded) {
     log('  · 캐시가 없으므로 아래 요청이 발생한다');
   }
   if (!manual) {
+    var regionListBase = client.PC_ORIGIN + client.REGION_LIST_PATH + '?cortarNo=';
     log('  GET ' + client.buildRegionListUrl(regionsMod.ROOT_CORTAR_NO) + '   ← 시도 목록');
-    log('  GET ' + client.buildRegionListUrl('{' + cfg.regions.sido + ' 코드}') + '   ← 구 목록');
+    log('  GET ' + regionListBase + '{' + cfg.regions.sido + ' 코드}   ← 구 목록');
     var guNames = [];
     (cfg.regions.include || []).forEach(function (e) {
       if (e && e.gu && guNames.indexOf(e.gu) === -1) guNames.push(e.gu);
     });
     guNames.forEach(function (gu) {
-      log('  GET ' + client.buildRegionListUrl('{' + gu + ' 코드}') + '   ← ' + gu + ' 법정동 목록');
+      log('  GET ' + regionListBase + '{' + gu + ' 코드}   ← ' + gu + ' 법정동 목록');
     });
   }
   line();
@@ -306,6 +307,8 @@ async function runDryRun(loaded) {
       url = url.replace(/lat=[\d.]+/, 'lat={centerLat}').replace(/lon=[\d.]+/, 'lon={centerLon}');
       url = url.replace(/btm=[-\d.]+/, 'btm={centerLat-dLat}').replace(/top=[-\d.]+/, 'top={centerLat+dLat}');
       url = url.replace(/lft=[-\d.]+/, 'lft={centerLon-dLon}').replace(/rgt=[-\d.]+/, 'rgt={centerLon+dLon}');
+      // 자리표시자는 URL 인코딩된 상태로 보여주면 읽기 어렵다
+      url = url.replace(/cortarNo=[^&]*/, 'cortarNo={' + r.name.replace(/\(.*\)/, '') + ' cortarNo}');
     }
     log('  ' + r.name + (r.gu ? ' (' + r.gu + ')' : '') + ' — page 1');
     log('  GET ' + url);
@@ -432,9 +435,11 @@ async function runVerify(loaded) {
 
   var targetRegion = null;
   var fatal = null;
+  var currentStep = 'V7'; // 예외가 났을 때 어느 항목에서 멈췄는지 표시하기 위해
 
   try {
     // ---------- V7: robots.txt ----------
+    currentStep = 'V7';
     log('[V7] robots.txt 확인 …');
     var robots = await c.get(client.ROBOTS_URL, { label: 'robots.txt', expect: 'text' });
     var verdict = robotsBlocks(robots.text, client.ARTICLE_LIST_PATH);
@@ -458,6 +463,7 @@ async function runVerify(loaded) {
     set('V7', 'PASS', 'User-agent:* 의 Disallow 중 목록 경로에 걸리는 규칙 없음 (규칙 ' + verdict.disallowRules.length + '개 확인)');
 
     // ---------- V3: regions/list ----------
+    currentStep = 'V3';
     log('[V3] regions/list 드릴다운 (시도 → 구 → 동) …');
     var sidoName = cfg.regions.sido || '서울특별시';
     var rootRes = await c.get(client.buildRegionListUrl(regionsMod.ROOT_CORTAR_NO), { label: 'regions/list 시도' });
@@ -509,6 +515,7 @@ async function runVerify(loaded) {
     }
 
     // ---------- V1 / V4 / V5 / V8: articleList (필터 적용) ----------
+    currentStep = 'V1';
     log('[V1] articleList 1회 요청 (보증금 필터 적용) …');
     var filteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, true));
     log('     ' + filteredUrl);
@@ -581,6 +588,7 @@ async function runVerify(loaded) {
     }
 
     // ---------- V2: 보증금 필터 유무 비교 ----------
+    currentStep = 'V2';
     log('[V2] 보증금 필터 없는 요청과 비교 …');
     var unfilteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, false));
     log('     ' + unfilteredUrl);
@@ -641,10 +649,15 @@ async function runVerify(loaded) {
     var kind = (e && e.kind) || 'unknown';
     var msg = client.maskSecrets((e && e.message) || String(e));
     fatal = fatal || msg;
-    record.fatal = { kind: kind, message: msg };
+    record.fatal = { kind: kind, message: msg, stoppedAt: currentStep };
+
+    // 멈춘 항목을 SKIP 이 아니라 FAIL 로 정직하게 표시한다
+    if (get(currentStep) && get(currentStep).result === 'SKIP') {
+      set(currentStep, 'FAIL', msg);
+    }
 
     log('');
-    log('■ 검증을 계속할 수 없습니다.');
+    log('■ 검증을 계속할 수 없습니다. (' + currentStep + ' 단계에서 중단)');
     log('  원인 유형: ' + kind);
     log('  내용: ' + msg);
     log('');
@@ -654,8 +667,11 @@ async function runVerify(loaded) {
       log('   2) 회사 네트워크라면 가정용 네트워크에서 다시 시도');
       log('   (이 코드를 작성한 환경도 정책상 naver.com 이 차단되어 있어 이 지점에서 멈췄습니다)');
     } else if (kind === 'blocked') {
-      log('  네이버가 요청을 거부(403/429)했거나 robots.txt 가 금지했습니다.');
-      log('  재시도하지 마세요. spec D6 에 따라 중단하고 이 결과를 보고해야 합니다.');
+      log('  403/429 응답입니다. 두 가지 가능성이 있습니다.');
+      log('   1) 네이버가 이 요청을 거부했다 → 재시도하지 말고 다음 주기를 기다리세요(spec D6에 따라 보고).');
+      log('   2) 중간의 프록시·사내망·보안 게이트웨이가 naver.com 을 막고 403 을 돌려준다');
+      log('      → 가정용 네트워크에서 다시 실행해 구분할 수 있습니다.');
+      log('      (이 코드를 작성한 환경이 바로 2번이었습니다: 정책상 naver.com CONNECT 가 403 으로 차단됨)');
     } else if (kind === 'auth') {
       log('  Authorization(토큰)이 필요한 응답입니다 → spec V3 실패 경로입니다.');
       log('  브라우저에서 여의도동 cortarNo 를 1회 확인해 config.json 의 regions.manual 에 넣으면');
@@ -728,6 +744,7 @@ async function runCollect(loaded) {
   loaded.clampWarnings.forEach(warn);
 
   var c = client.createClient({ politeness: politeness, log: log });
+  activeClient = c; // 예외로 죽어도 last-run.json 에 요청 수를 남기기 위해
 
   // ---------- 1) 지역 해석 ----------
   var resolved = await regionsMod.resolveRegions({
@@ -1036,6 +1053,8 @@ function finishFailure(message, ctx) {
   return 1;
 }
 
+var activeClient = null; // runCollect 가 만든 클라이언트 (실패 로그용)
+
 function writeLastRun(obj) {
   try {
     writeJsonAtomic(LAST_RUN_PATH, obj);
@@ -1084,7 +1103,22 @@ async function main() {
   var loaded = loadConfig();
   if (mode === 'dry-run') return runDryRun(loaded);
   if (mode === 'verify') return runVerify(loaded);
-  return runCollect(loaded);
+
+  // 수집 실패도 조용히 넘기지 않는다 — 예외로 죽어도 last-run.json 을 남긴다 (spec 8.4)
+  try {
+    return await runCollect(loaded);
+  } catch (e) {
+    writeLastRun({
+      at: new Date().toISOString(),
+      ok: false,
+      requests: activeClient ? activeClient.state.requests : 0,
+      collected: 0,
+      regionsFailed: [],
+      message: ((e && e.kind) || 'error') + ': ' + client.maskSecrets((e && e.message) || String(e)),
+      elapsedMs: null
+    });
+    throw e;
+  }
 }
 
 main()
