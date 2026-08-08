@@ -27,6 +27,11 @@ var HARD_LIMITS = {
 var MOBILE_ORIGIN = 'https://m.land.naver.com';
 var PC_ORIGIN = 'https://new.land.naver.com';
 var ARTICLE_LIST_PATH = '/cluster/ajax/articleList';
+/* 모바일은 2단계다. 먼저 clusterList 로 지도상의 매물 묶음(lgeo)을 받고,
+   그 lgeo 를 articleList 의 itemId·lgeo 에 넣어야 매물이 나온다.
+   빈 itemId·lgeo 로 articleList 를 부르면 HTTP 200 + 본문 `null` 이 온다
+   (실제 사용자 환경에서 확인). */
+var CLUSTER_LIST_PATH = '/cluster/clusterList';
 var REGION_LIST_PATH = '/api/regions/list';
 var ROBOTS_URL = MOBILE_ORIGIN + '/robots.txt';
 var ARTICLE_INFO_PREFIX = MOBILE_ORIGIN + '/article/info/';
@@ -140,9 +145,9 @@ function buildArticleListUrl(o) {
   /* 모바일 프런트엔드가 실제로 보내는 파라미터들. 값이 비어 있어도 키 자체를
      요구하는 엔드포인트가 있어서, 빈 값으로라도 함께 보낸다.
      (이 엔드포인트가 200 + 빈 응답을 돌려주는 원인 후보였다) */
-  q.set('itemId', '');
-  q.set('mapKey', '');
-  q.set('lgeo', '');
+  q.set('itemId', o.itemId == null ? '' : String(o.itemId));
+  q.set('mapKey', o.mapKey == null ? '' : String(o.mapKey));
+  q.set('lgeo', o.lgeo == null ? '' : String(o.lgeo));
   q.set('showR0', '');
   q.set('view', 'atcl');
   q.set('z', String(o.zoom));
@@ -166,6 +171,31 @@ function buildArticleListUrl(o) {
   q.set('sameAddressGroup', o.sameAddressGroup === true ? 'true' : 'false');
   q.set('page', String(o.page || 1));
   return MOBILE_ORIGIN + ARTICLE_LIST_PATH + '?' + q.toString();
+}
+
+/** 1단계: 지도 영역 안의 매물 묶음(cluster) 목록. 여기서 lgeo 를 얻는다. */
+function buildClusterListUrl(o) {
+  var bbox = makeBbox(Number(o.centerLat), Number(o.centerLon), Number(o.dLat), Number(o.dLon));
+  var q = new URLSearchParams();
+  q.set('view', 'atcl');
+  q.set('cortarNo', String(o.cortarNo || ''));
+  if (o.realEstateType && o.realEstateType.length) q.set('rletTpCd', o.realEstateType.join(':'));
+  if (o.tradeType && o.tradeType.length) q.set('tradTpCd', o.tradeType.join(':'));
+  q.set('z', String(o.zoom));
+  q.set('lat', String(round6(Number(o.centerLat))));
+  q.set('lon', String(round6(Number(o.centerLon))));
+  q.set('btm', String(bbox.btm));
+  q.set('lft', String(bbox.lft));
+  q.set('top', String(bbox.top));
+  q.set('rgt', String(bbox.rgt));
+  if (o.withDepositFilter !== false) {
+    if (isNum(o.depositMin)) q.set('wprcMin', String(o.depositMin));
+    if (isNum(o.depositMax)) q.set('wprcMax', String(o.depositMax));
+  }
+  if (isNum(o.areaMinM2)) q.set('spcMin', String(o.areaMinM2));
+  if (isNum(o.areaMaxM2)) q.set('spcMax', String(o.areaMaxM2));
+  q.set('pCortarNo', '');
+  return MOBILE_ORIGIN + CLUSTER_LIST_PATH + '?' + q.toString();
 }
 
 /** 지역 목록(법정동 드릴다운) URL. cortarNo가 상위 코드다. */
@@ -348,15 +378,18 @@ function createClient(opts) {
     politeness: politeness,
     remainingBudget: remainingBudget,
     buildArticleListUrl: buildArticleListUrl,
+    buildClusterListUrl: buildClusterListUrl,
     buildRegionListUrl: buildRegionListUrl
   };
 }
 
 module.exports = {
+  buildClusterListUrl: buildClusterListUrl,
   HARD_LIMITS: HARD_LIMITS,
   MOBILE_ORIGIN: MOBILE_ORIGIN,
   PC_ORIGIN: PC_ORIGIN,
   ARTICLE_LIST_PATH: ARTICLE_LIST_PATH,
+  CLUSTER_LIST_PATH: CLUSTER_LIST_PATH,
   REGION_LIST_PATH: REGION_LIST_PATH,
   ROBOTS_URL: ROBOTS_URL,
   MOBILE_HEADERS: MOBILE_HEADERS,

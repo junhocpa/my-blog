@@ -171,8 +171,13 @@ function loadConfig() {
 // ------------------------------------------------------------------
 // 공통: 지역별 요청 파라미터 조립
 // ------------------------------------------------------------------
-function articleListParams(cfg, region, page, withDepositFilter) {
+function articleListParams(cfg, region, page, withDepositFilter, cluster) {
   return {
+    // 모바일은 2단계다. clusterList 에서 받은 lgeo 를 itemId·lgeo 로 넘겨야
+    // 매물이 나온다. 비워 두면 HTTP 200 + 본문 `null` 이 온다.
+    itemId: cluster ? cluster.lgeo : '',
+    lgeo: cluster ? cluster.lgeo : '',
+    mapKey: cluster && cluster.mapKey ? cluster.mapKey : '',
     cortarNo: region.cortarNo,
     centerLat: region.centerLat,
     centerLon: region.centerLon,
@@ -582,8 +587,57 @@ async function runVerify(loaded) {
 
     // ---------- V1 / V4 / V5 / V8: articleList (필터 적용) ----------
     currentStep = 'V1';
-    log('[V1] articleList 1회 요청 (보증금 필터 적용) …');
-    var filteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, true));
+
+    /* 1단계: clusterList 로 lgeo 를 얻는다.
+       스펙 조사에서 이 단계가 빠져 있어 articleList 가 본문 `null` 을 돌려줬다.
+       여기서도 응답 원문을 남긴다 — 추측하지 않고 원문으로 판단하기 위해서다. */
+    log('[V1-1단계] clusterList 로 매물 묶음(lgeo) 조회 …');
+    var clusterUrl = client.buildClusterListUrl(articleListParams(cfg, targetRegion, 1, true));
+    log('     ' + clusterUrl);
+    var clusterRaw = await c.get(clusterUrl, { label: 'clusterList', expect: 'text' });
+    var clusterText = String(clusterRaw.text == null ? '' : clusterRaw.text);
+    var clusterPath = path.join(RUN_LOGS_DIR, 'last-raw-cluster.txt');
+    try {
+      fs.writeFileSync(clusterPath, '요청 URL:\n' + clusterUrl + '\n\n응답 원문:\n' + client.maskSecrets(clusterText));
+    } catch (eCW) { /* 로그 저장 실패가 검증을 막지는 않는다 */ }
+
+    var clusterJson = null;
+    try { clusterJson = clusterText.length ? JSON.parse(clusterText) : null; } catch (eCP) { clusterJson = null; }
+
+    // lgeo 가 들어있을 만한 배열을 찾는다(응답 키 이름이 스펙과 다를 수 있으므로 넓게 훑는다).
+    var clusters = [];
+    (function collectClusters(node, depth) {
+      if (!node || depth > 4) return;
+      if (Array.isArray(node)) {
+        node.forEach(function (v) { collectClusters(v, depth + 1); });
+        return;
+      }
+      if (typeof node !== 'object') return;
+      if (node.lgeo) clusters.push(node);
+      Object.keys(node).forEach(function (k) { collectClusters(node[k], depth + 1); });
+    })(clusterJson, 0);
+
+    var clusterHead = client.maskSecrets(clusterText.slice(0, 500)).replace(/\s+/g, ' ');
+    log('     응답 ' + clusterText.length + '바이트, lgeo 발견 ' + clusters.length + '개');
+    log('     원문 앞부분: ' + (clusterHead || '(없음)'));
+    log('     전체 원문: ' + clusterPath);
+
+    if (!clusters.length) {
+      set('V1', 'FAIL',
+        'clusterList 에서 lgeo 를 찾지 못했다. 응답 ' + clusterText.length + '바이트 / 앞부분: ' + (clusterHead || '(없음)'));
+      log('');
+      log('  ▶ 1단계부터 값이 오지 않았습니다. 브라우저의 실제 요청을 떠와야 정확히 맞출 수 있습니다.');
+      log('    크롬에서 m.land.naver.com → 여의도동 아파트 전세 검색 → F12 → Network 탭 →');
+      log('    목록을 스크롤 → articleList 요청 우클릭 → Copy → Copy as cURL (bash) → 그 내용을 알려주세요.');
+      log('    (Cookie 줄은 지우고 보내셔도 됩니다)');
+      throw client.ApiError('parse', 'clusterList 에서 lgeo 를 얻지 못했다 (원문은 ' + clusterPath + ' 에 저장)');
+    }
+
+    var cluster0 = clusters[0];
+    log('     사용할 묶음: lgeo=' + cluster0.lgeo + (cluster0.count != null ? ' (매물 ' + cluster0.count + '건)' : ''));
+
+    log('[V1-2단계] articleList 1회 요청 (보증금 필터 적용) …');
+    var filteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, true, cluster0));
     log('     ' + filteredUrl);
     /* 먼저 원문(text)으로 받는다. 스펙이 틀렸을 때 "구조가 다르다"는 말만으로는
        무엇이 틀렸는지 알 수 없다. 응답 원문을 남겨야 진단이 가능하다. */
@@ -698,7 +752,7 @@ async function runVerify(loaded) {
     // ---------- V2: 보증금 필터 유무 비교 ----------
     currentStep = 'V2';
     log('[V2] 보증금 필터 없는 요청과 비교 …');
-    var unfilteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, false));
+    var unfilteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, false, cluster0));
     log('     ' + unfilteredUrl);
     var plainRes = await c.get(unfilteredUrl, { label: 'articleList (wprc 필터 없음)' });
     var plainBody = plainRes.json && Array.isArray(plainRes.json.body) ? plainRes.json.body : [];
