@@ -256,16 +256,19 @@ function createClient(opts) {
     if (state.aborted) {
       throw ApiError('blocked', '이미 중단된 실행이다: ' + state.abortReason);
     }
-    if (remainingBudget() <= 0) {
-      throw ApiError(
-        'budget',
-        '요청 예산 소진 (maxRequestsPerRun=' + politeness.maxRequestsPerRun + '). 이번 실행을 중단한다.'
-      );
-    }
-
     var attempt = 0;
     for (;;) {
       attempt += 1;
+      // 예산 검사는 매 시도마다 한다. 루프 바깥에서 한 번만 검사하면
+      // 재시도가 상한을 우회해 maxRequestsPerRun을 최대 maxRetries 만큼 넘긴다.
+      if (remainingBudget() <= 0) {
+        throw ApiError(
+          'budget',
+          '요청 예산 소진 (maxRequestsPerRun=' + politeness.maxRequestsPerRun + ').' +
+            (attempt > 1 ? ' 재시도 중 예산이 소진되었다.' : '') +
+            ' 이번 실행을 중단한다.'
+        );
+      }
       await waitTurn();
       state.lastRequestAt = Date.now();
       state.requests += 1;

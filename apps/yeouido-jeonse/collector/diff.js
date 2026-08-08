@@ -33,6 +33,7 @@ function indexById(listings) {
  *   history             이전 history.json 객체 (없으면 null)
  *   now                 ISO 시각 문자열
  *   failedRegionCodes   이번 실행에서 수집이 실패한 cortarNo 배열
+ *   skippedIds          정규화에 실패해 이번 스냅샷에서 빠진 매물번호 배열 (사라짐 판정 보류)
  *   keepDisappearedDays 사라진 매물 보관 일수 (기본 14)
  *   historyMaxSnapshots runs 배열 보관 개수 (기본 60)
  *   recentChangeDays    가격변동 배지 유지 일수 (기본 7)
@@ -56,6 +57,12 @@ function computeDiff(o) {
     failed[String(c)] = true;
   });
   var anyRegionFailed = Object.keys(failed).length > 0;
+
+  // 정규화에 실패해 이번 스냅샷에서 빠진 매물. 응답에는 있었으므로 "사라진" 것이 아니다.
+  var skipped = Object.create(null);
+  (o.skippedIds || []).forEach(function (id) {
+    skipped[String(id)] = true;
+  });
 
   var histIn = o.history && o.history.items ? o.history.items : {};
   var histOut = Object.create(null);
@@ -124,6 +131,7 @@ function computeDiff(o) {
   // ---------- 이번에 관측되지 않은 이전 매물 ----------
   var newlyDisappeared = 0;
   var heldForFailure = 0;
+  var heldForSkip = 0;   // 그중 정규화 실패로 보류된 건수
   var removedExpired = 0;
 
   Object.keys(prevById).forEach(function (id) {
@@ -134,8 +142,15 @@ function computeDiff(o) {
     // (2) 실패한 지역이면 삭제 판정을 보류한다.
     //     regionCode를 모르는 매물(응답에 cortarNo가 없던 건)은 어느 지역인지 확인할 수 없으므로,
     //     실패한 지역이 하나라도 있으면 역시 보류한다 — 판단 불가를 "사라짐"으로 위장하지 않는다.
-    if (failed[String(prevItem.regionCode)] || (anyRegionFailed && !prevItem.regionCode)) {
+    // (2-b) 응답에는 있었지만 정규화에 실패해 빠진 매물도 보류한다.
+    //       파싱 실패를 "매물이 사라졌다"로 보고하면 사용자가 잘못된 결론을 내린다.
+    if (
+      failed[String(prevItem.regionCode)] ||
+      (anyRegionFailed && !prevItem.regionCode) ||
+      skipped[String(id)]
+    ) {
       heldForFailure += 1;
+      if (skipped[String(id)]) heldForSkip += 1;
       var held = Object.assign({}, prevItem, { heldDueToFailure: true });
       out.push(held);
       histOut[id] = {
@@ -176,7 +191,10 @@ function computeDiff(o) {
   }
   if (heldForFailure > 0) {
     notes.push(
-      heldForFailure + '건은 수집 실패 지역의 매물이라 삭제 판정을 보류했다 (사라짐으로 처리하지 않음).'
+      heldForFailure + '건은 삭제 판정을 보류했다 (사라짐으로 처리하지 않음)' +
+        (heldForSkip > 0
+          ? ' — 수집 실패 지역 ' + (heldForFailure - heldForSkip) + '건, 정규화 실패 ' + heldForSkip + '건.'
+          : ' — 수집 실패 지역의 매물이다.')
     );
   }
   if (removedExpired > 0) {
@@ -195,6 +213,7 @@ function computeDiff(o) {
     disappeared: disappearedCount,
     newlyDisappeared: newlyDisappeared,
     heldForFailure: heldForFailure,
+    heldForSkip: heldForSkip,
     errors: (o.failedRegionCodes || []).length,
     baselineCreated: isFirstRun
   };

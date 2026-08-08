@@ -837,6 +837,7 @@ async function runCollect(loaded) {
   var totalUnitSuspect = 0;
   var normWarnings = [];
   var skipReasons = Object.create(null);
+  var skippedIds = [];
 
   rawByRegion.forEach(function (bucket) {
     var res = normalizeMod.normalizeMany(bucket.items, { regionName: bucket.region.name, now: now });
@@ -847,6 +848,7 @@ async function runCollect(loaded) {
     Object.keys(res.skippedReasons).forEach(function (k) {
       skipReasons[k] = (skipReasons[k] || 0) + res.skippedReasons[k];
     });
+    skippedIds = skippedIds.concat(res.skippedIds || []);
     allListings = allListings.concat(res.listings);
   });
 
@@ -921,6 +923,14 @@ async function runCollect(loaded) {
   if (finalListings.length === 0 && prev && Array.isArray(prev.listings) && prev.listings.length > 0) {
     log('수집 결과 0건 — 기존 데이터를 보존하고 종료한다(0건은 에러가 아니지만, 덮어쓰지 않는다).');
     log('  조건이 좁을 수 있다: 보증금 ' + cfg.criteria.depositMin + '~' + cfg.criteria.depositMax + '만원');
+    // 0건의 원인이 "조건이 좁아서"인지 "전부 실패해서"인지 구분되게 실패 목록을 반드시 출력한다.
+    if (failedRegions.length > 0) {
+      log('');
+      log('■ 0건의 원인은 수집 실패일 수 있습니다 — 실패 지역 ' + failedRegions.length + '개:');
+      failedRegions.forEach(function (f) {
+        log('   - ' + f.name + ': ' + f.reason);
+      });
+    }
     writeLastRun({
       at: now,
       ok: failedRegions.length === 0,
@@ -941,6 +951,8 @@ async function runCollect(loaded) {
     failedRegionCodes: failedRegions.map(function (f) {
       return f.cortarNo;
     }),
+    // 정규화에 실패해 이번 스냅샷에서 빠진 매물은 "사라짐"이 아니라 판정 보류 대상이다.
+    skippedIds: skippedIds,
     keepDisappearedDays: cfg.output.keepDisappearedDays,
     historyMaxSnapshots: cfg.output.historyMaxSnapshots
   });

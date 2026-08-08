@@ -228,6 +228,7 @@ function normalizeMany(rawList, ctx) {
   var listings = [];
   var warnings = [];
   var skippedReasons = Object.create(null);
+  var skippedIds = [];
   var unitSuspectCount = 0;
   var optionalMissing = { spc2: 0, rletTpNm: 0, atclCfmYmd: 0, flrInfo: 0, cortarNo: 0 };
 
@@ -235,6 +236,9 @@ function normalizeMany(rawList, ctx) {
     var res = normalizeOne(raw, ctx);
     if (!res.ok) {
       skippedReasons[res.reason] = (skippedReasons[res.reason] || 0) + 1;
+      // 스킵된 매물의 번호를 남긴다. 이것이 없으면 다음 실행의 diff가
+      // "정규화에 실패한 매물"을 "매물이 사라졌다"로 오독한다.
+      if (raw && raw.atclNo) skippedIds.push(String(raw.atclNo));
       return;
     }
     if (res.warnings.length) warnings = warnings.concat(res.warnings);
@@ -252,6 +256,7 @@ function normalizeMany(rawList, ctx) {
     listings: listings,
     warnings: warnings,
     skippedReasons: skippedReasons,
+    skippedIds: skippedIds,
     total: list.length,
     skipped: skipped,
     skipRate: list.length ? skipped / list.length : 0,
