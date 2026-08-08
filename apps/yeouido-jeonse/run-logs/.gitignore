@@ -1,0 +1,8 @@
+# 실행 로그는 커밋하지 않는다 (폴더 자체는 .gitkeep 으로 유지)
+last-run.json
+verification.json
+last-raw-sample.json
+*.log
+*.tmp
+
+!.gitkeep

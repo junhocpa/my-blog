@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>여의도 전세 매물</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>여의도 전세 매물</h1>
+      <p class="meta" id="meta-line">데이터를 읽고 있습니다…</p>
+      <p class="stat-line" id="stat-line" hidden></p>
+    </header>
+
+    <!-- 상태 배너: 예시 데이터 / 부분 실패 / 데이터 출처 -->
+    <div class="banners" id="banners" aria-live="polite"></div>
+
+    <!-- 필터바 — 수집 조건이 아니라 "이미 수집된 데이터를 좁혀 보는" 도구다 -->
+    <section class="filters" id="filters" aria-label="필터" hidden>
+      <div class="filter-note">
+        아래 필터는 <strong>이미 수집된 매물을 좁혀 보는</strong> 기능입니다.
+        무엇을 수집할지(지역·보증금·매물종류)는 <code>collector/config.json</code>에서 바꿉니다.
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">지역</span>
+        <div class="chips" id="region-chips"></div>
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">종류</span>
+        <div class="chips" id="type-chips"></div>
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">보증금</span>
+        <div class="chips" id="deposit-presets"></div>
+      </div>
+
+      <div class="filter-row range-row">
+        <label class="range-field">
+          <span class="range-caption">최소 <output id="deposit-min-out">-</output></span>
+          <input type="range" id="deposit-min" min="0" max="100000" step="1000" value="0">
+        </label>
+        <label class="range-field">
+          <span class="range-caption">최대 <output id="deposit-max-out">-</output></span>
+          <input type="range" id="deposit-max" min="0" max="100000" step="1000" value="100000">
+        </label>
+      </div>
+
+      <div class="filter-row">
+        <label class="select-field">
+          <span class="filter-label">전용면적 최소</span>
+          <select id="area-min">
+            <option value="">전체</option>
+            <option value="30">30㎡ 이상</option>
+            <option value="40">40㎡ 이상</option>
+            <option value="50">50㎡ 이상</option>
+            <option value="60">60㎡ 이상</option>
+            <option value="80">80㎡ 이상</option>
+            <option value="100">100㎡ 이상</option>
+          </select>
+        </label>
+        <label class="select-field">
+          <span class="filter-label">정렬</span>
+          <select id="sort">
+            <option value="confirm-desc">확인일 최신순</option>
+            <option value="deposit-asc">보증금 낮은순</option>
+            <option value="deposit-desc">보증금 높은순</option>
+            <option value="area-desc">전용면적 넓은순</option>
+            <option value="first-desc">최초 관측 최신순</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="filter-row">
+        <div class="chips" id="toggle-chips"></div>
+        <button type="button" class="reset-btn" id="reset-btn">필터 초기화</button>
+      </div>
+    </section>
+
+    <p class="result-count" id="result-count" hidden></p>
+
+    <section id="listings" class="listings" aria-live="polite" aria-label="매물 목록"></section>
+
+    <div class="state" id="state-box">
+      <p class="state-title" id="state-title">데이터를 읽고 있습니다…</p>
+      <div class="state-body" id="state-body"></div>
+    </div>
+
+    <footer class="app-footer">
+      <p class="disclaimer">
+        네이버 부동산 공개 매물 정보를 개인 열람 목적으로 수집. 정확한 정보는 원본을 확인하세요.
+      </p>
+      <details class="help">
+        <summary>수집·주기 실행 방법</summary>
+        <ol>
+          <li>처음 한 번: <code>node apps/yeouido-jeonse/collector/collect.js --verify</code>
+            — 네이버 API 스펙이 실제로 맞는지 확인합니다(이 코드는 네이버 접속이 차단된 환경에서 작성되어
+            라이브 검증되지 않았습니다).</li>
+          <li>평소 수집: <code>node apps/yeouido-jeonse/collector/collect.js</code></li>
+          <li>1일 2회 자동 실행(macOS/Linux):
+            <code>0 8,20 * * * cd &lt;저장소&gt; &amp;&amp; /usr/bin/node apps/yeouido-jeonse/collector/collect.js &gt;&gt; apps/yeouido-jeonse/run-logs/cron.log 2&gt;&amp;1</code></li>
+          <li>Windows는 작업 스케줄러에 매일 08:00·20:00으로 등록합니다. 자세한 내용은 앱 폴더의 README.md 참조.</li>
+        </ol>
+      </details>
+    </footer>
+  </main>
+
+  <noscript>
+    <p class="noscript">이 페이지는 JavaScript로 매물 목록을 그립니다. JavaScript를 켜 주세요.</p>
+  </noscript>
+</body>
+</html>

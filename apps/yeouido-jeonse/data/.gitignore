@@ -1,0 +1,11 @@
+# 실제 수집 데이터는 커밋하지 않는다 (spec 11장 D1 — 공개 재배포 회피).
+# 공개 사이트에서는 sample.json 이 대신 표시된다.
+listings.json
+history.json
+regions.cache.json
+
+# 원자적 저장 과정의 임시 파일
+*.tmp
+
+# sample.json 은 공개 사이트 시연용이므로 커밋한다
+!sample.json
