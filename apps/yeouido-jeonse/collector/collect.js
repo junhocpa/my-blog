@@ -585,12 +585,54 @@ async function runVerify(loaded) {
     log('[V1] articleList 1회 요청 (보증금 필터 적용) …');
     var filteredUrl = client.buildArticleListUrl(articleListParams(cfg, targetRegion, 1, true));
     log('     ' + filteredUrl);
-    var listRes = await c.get(filteredUrl, { label: 'articleList (wprc 필터 있음)' });
-    var envelope = listRes.json;
+    /* 먼저 원문(text)으로 받는다. 스펙이 틀렸을 때 "구조가 다르다"는 말만으로는
+       무엇이 틀렸는지 알 수 없다. 응답 원문을 남겨야 진단이 가능하다. */
+    var listRaw = await c.get(filteredUrl, { label: 'articleList (wprc 필터 있음)', expect: 'text' });
+    var rawText = String(listRaw.text == null ? '' : listRaw.text);
+    var rawPath = path.join(RUN_LOGS_DIR, 'last-raw-v1.txt');
+    try {
+      fs.writeFileSync(rawPath, '요청 URL:\n' + filteredUrl + '\n\n응답 원문:\n' + client.maskSecrets(rawText));
+    } catch (eW) { /* 로그 저장 실패가 검증을 막지는 않는다 */ }
+
+    var envelope = null;
+    var parseErr = null;
+    try {
+      envelope = rawText.length ? JSON.parse(rawText) : null;
+    } catch (eP) {
+      parseErr = eP;
+    }
+
     var body = envelope && Array.isArray(envelope.body) ? envelope.body : null;
     if (!body) {
-      set('V1', 'FAIL', '응답에 body 배열이 없다. 받은 키: ' + Object.keys(envelope || {}).join(', '));
-      throw client.ApiError('parse', 'articleList 응답 구조가 스펙과 다르다');
+      var shape = envelope === null
+        ? (parseErr ? 'JSON 이 아님' : '빈 응답(길이 0)')
+        : Array.isArray(envelope)
+          ? '배열(길이 ' + envelope.length + ')'
+          : typeof envelope === 'object'
+            ? (Object.keys(envelope).length ? '객체 키: ' + Object.keys(envelope).join(', ') : '빈 객체 {}')
+            : typeof envelope;
+      var head = client.maskSecrets(rawText.slice(0, 400)).replace(/\s+/g, ' ');
+      set('V1', 'FAIL', 'body 배열이 없다. 응답 형태 = ' + shape + ' / 원문 앞부분: ' + (head || '(없음)'));
+      log('');
+      log('  ── 응답 진단 ──────────────────────────────────');
+      log('  HTTP 상태 : ' + listRaw.status + ' (200이면 차단이 아니다)');
+      log('  응답 길이 : ' + rawText.length + ' 바이트');
+      log('  응답 형태 : ' + shape);
+      log('  원문 앞부분: ' + (head || '(없음)'));
+      log('  전체 원문 : ' + rawPath);
+      log('');
+      if (listRaw.status === 200 && (rawText.length === 0 || shape === '빈 객체 {}')) {
+        log('  200인데 내용이 비었다 = 차단이 아니라 요청 파라미터가 부족하거나');
+        log('  이 엔드포인트가 요구하는 값이 빠졌을 가능성이 큽니다.');
+        log('');
+        log('  ▶ 가장 확실한 해결책: 브라우저에서 실제 요청을 그대로 떠 오는 것입니다.');
+        log('    1) 크롬에서 https://m.land.naver.com 접속 → 여의도동 아파트 전세로 검색');
+        log('    2) F12 → Network 탭 → 목록을 아래로 스크롤');
+        log('    3) articleList 라는 요청을 우클릭 → Copy → Copy as cURL (bash)');
+        log('    4) 그 내용을 붙여서 알려주면 빠진 파라미터를 정확히 맞출 수 있습니다.');
+        log('    (쿠키가 포함될 수 있으니, 붙여넣기 전 Cookie 줄은 지우거나 가려도 됩니다)');
+      }
+      throw client.ApiError('parse', 'articleList 응답에 body 배열이 없다 (원문은 ' + rawPath + ' 에 저장)');
     }
     set(
       'V1',

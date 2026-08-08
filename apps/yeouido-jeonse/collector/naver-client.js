@@ -137,6 +137,13 @@ function round6(n) {
 function buildArticleListUrl(o) {
   var bbox = makeBbox(Number(o.centerLat), Number(o.centerLon), Number(o.dLat), Number(o.dLon));
   var q = new URLSearchParams();
+  /* 모바일 프런트엔드가 실제로 보내는 파라미터들. 값이 비어 있어도 키 자체를
+     요구하는 엔드포인트가 있어서, 빈 값으로라도 함께 보낸다.
+     (이 엔드포인트가 200 + 빈 응답을 돌려주는 원인 후보였다) */
+  q.set('itemId', '');
+  q.set('mapKey', '');
+  q.set('lgeo', '');
+  q.set('showR0', '');
   q.set('view', 'atcl');
   q.set('z', String(o.zoom));
   q.set('lat', String(round6(Number(o.centerLat))));
@@ -155,6 +162,8 @@ function buildArticleListUrl(o) {
   }
   if (isNum(o.areaMinM2)) q.set('spcMin', String(o.areaMinM2));
   if (isNum(o.areaMaxM2)) q.set('spcMax', String(o.areaMaxM2));
+  // 동일주소 매물을 묶지 않고 개별로 받는다 (묶으면 개별 매물이 감춰진다)
+  q.set('sameAddressGroup', o.sameAddressGroup === true ? 'true' : 'false');
   q.set('page', String(o.page || 1));
   return MOBILE_ORIGIN + ARTICLE_LIST_PATH + '?' + q.toString();
 }
