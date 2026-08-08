@@ -496,7 +496,39 @@ async function runVerify(loaded) {
     }
 
     // ---------- V3: regions/list ----------
+    /* manual 좌표가 설정돼 있으면 regions/list(PC 호스트)를 아예 건드리지 않는다.
+       V3(new.land.naver.com)과 V1(m.land.naver.com)은 서로 다른 서버다.
+       PC 호스트가 거절해도 모바일 호스트는 별개일 수 있으므로,
+       정작 중요한 V1을 시험하지 못하고 멈추는 상황을 피한다. */
     currentStep = 'V3';
+    var manualList = (cfg.regions && Array.isArray(cfg.regions.manual) && cfg.regions.manual) || [];
+    var manualTarget = null;
+    for (var mi = 0; mi < manualList.length; mi++) {
+      var mEntry = manualList[mi];
+      if (mEntry && mEntry.cortarNo && isFinite(Number(mEntry.centerLat)) && isFinite(Number(mEntry.centerLon))) {
+        manualTarget = mEntry;
+        break;
+      }
+    }
+
+    if (manualTarget) {
+      log('[V3] 건너뜀 — config.json 의 regions.manual 값을 사용합니다 (regions/list 를 호출하지 않음)');
+      set(
+        'V3',
+        'SKIP',
+        'config.json 의 regions.manual 을 사용해 드릴다운을 건너뛰었다. ' +
+          '수동 지정: ' + (manualTarget.name || '(이름없음)') + ' cortarNo=' + manualTarget.cortarNo
+      );
+      record.regions = { manual: true, used: manualTarget };
+      targetRegion = {
+        cortarNo: String(manualTarget.cortarNo),
+        name: manualTarget.name || '수동지정',
+        gu: manualTarget.gu || '',
+        centerLat: Number(manualTarget.centerLat),
+        centerLon: Number(manualTarget.centerLon)
+      };
+      log('     대상: ' + targetRegion.name + ' (cortarNo=' + targetRegion.cortarNo + ')');
+    } else {
     log('[V3] regions/list 드릴다운 (시도 → 구 → 동) …');
     var sidoName = cfg.regions.sido || '서울특별시';
     var rootRes = await c.get(client.buildRegionListUrl(regionsMod.ROOT_CORTAR_NO), { label: 'regions/list 시도' });
@@ -545,6 +577,7 @@ async function runVerify(loaded) {
     if (!isFinite(targetRegion.centerLat) || !isFinite(targetRegion.centerLon)) {
       set('V3', 'FAIL', 'centerLat/centerLon 이 없어 bbox 를 만들 수 없다');
       throw client.ApiError('parse', 'regions/list 응답에 중심 좌표가 없다');
+    }
     }
 
     // ---------- V1 / V4 / V5 / V8: articleList (필터 적용) ----------
