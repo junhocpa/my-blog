@@ -36,15 +36,37 @@ var REGION_LIST_PATH = '/api/regions/list';
 var ROBOTS_URL = MOBILE_ORIGIN + '/robots.txt';
 var ARTICLE_INFO_PREFIX = MOBILE_ORIGIN + '/article/info/';
 
-// 모바일 프런트엔드가 보내는 최소 헤더. Authorization·Cookie 없음.
+/* 모바일 프런트엔드가 보내는 헤더. Authorization·Cookie 없음.
+
+   실제 사용자 환경에서 clusterList·articleList 둘 다 HTTP 200 + 본문 `null` 을
+   돌려주는 것을 확인했다. 파라미터 문제가 아니라는 뜻이다.
+   경로에 'ajax' 가 들어간 엔드포인트는 통상 XHR 임을 증명하는 헤더를 요구하고,
+   아니면 본문 없이 null 을 준다. 그래서 아래 두 개를 추가했다.
+   - X-Requested-With: XMLHttpRequest
+   - Referer: 루트가 아니라 실제 지도 화면 형태의 URL
+
+   ⚠️ 이 두 가지도 아직 라이브 검증되지 않은 가설이다.
+      확정하려면 브라우저의 실제 요청(Copy as cURL)과 대조해야 한다. */
 var MOBILE_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 ' +
     '(KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
   Referer: MOBILE_ORIGIN + '/',
   'Accept-Language': 'ko-KR,ko;q=0.9',
-  Accept: '*/*'
+  Accept: 'application/json, text/plain, */*',
+  'X-Requested-With': 'XMLHttpRequest'
 };
+
+/** 실제 지도 화면 URL 형태의 Referer. 루트(/)보다 실제 요청에 가깝다. */
+function mapReferer(o) {
+  if (!o || !isNum(Number(o.centerLat)) || !isNum(Number(o.centerLon))) return MOBILE_ORIGIN + '/';
+  var types = o.realEstateType && o.realEstateType.length ? o.realEstateType.join(':') : 'APT';
+  var trades = o.tradeType && o.tradeType.length ? o.tradeType.join(':') : 'B1';
+  return (
+    MOBILE_ORIGIN + '/map/' + round6(Number(o.centerLat)) + ':' + round6(Number(o.centerLon)) +
+    ':' + String(o.zoom || 13) + '/' + types + '/' + trades
+  );
+}
 
 // ------------------------------------------------------------------
 // 에러 — kind로 상위에서 분기한다. 스택을 사용자에게 토하지 않기 위해 message를 사람 말로 쓴다.
@@ -248,7 +270,7 @@ function createClient(opts) {
     if (need > 0) await sleep(need);
   }
 
-  async function rawFetch(url, expect) {
+  async function rawFetch(url, expect, referer) {
     var controller = new AbortController();
     var timer = setTimeout(function () {
       controller.abort();
@@ -256,7 +278,7 @@ function createClient(opts) {
     try {
       var res = await fetch(url, {
         method: 'GET',
-        headers: MOBILE_HEADERS,
+        headers: referer ? Object.assign({}, MOBILE_HEADERS, { Referer: referer }) : MOBILE_HEADERS,
         redirect: 'follow',
         signal: controller.signal
       });
@@ -315,7 +337,7 @@ function createClient(opts) {
 
       var result;
       try {
-        result = await rawFetch(url, expect);
+        result = await rawFetch(url, expect, options.referer);
       } catch (e) {
         // 네트워크 오류: 재시도 대상
         if (attempt > politeness.maxRetries) throw e;
@@ -384,6 +406,7 @@ function createClient(opts) {
 }
 
 module.exports = {
+  mapReferer: mapReferer,
   buildClusterListUrl: buildClusterListUrl,
   HARD_LIMITS: HARD_LIMITS,
   MOBILE_ORIGIN: MOBILE_ORIGIN,

@@ -594,7 +594,8 @@ async function runVerify(loaded) {
     log('[V1-1단계] clusterList 로 매물 묶음(lgeo) 조회 …');
     var clusterUrl = client.buildClusterListUrl(articleListParams(cfg, targetRegion, 1, true));
     log('     ' + clusterUrl);
-    var clusterRaw = await c.get(clusterUrl, { label: 'clusterList', expect: 'text' });
+    var mapRef = client.mapReferer(articleListParams(cfg, targetRegion, 1, true));
+    var clusterRaw = await c.get(clusterUrl, { label: 'clusterList', expect: 'text', referer: mapRef });
     var clusterText = String(clusterRaw.text == null ? '' : clusterRaw.text);
     var clusterPath = path.join(RUN_LOGS_DIR, 'last-raw-cluster.txt');
     try {
@@ -626,7 +627,12 @@ async function runVerify(loaded) {
       set('V1', 'FAIL',
         'clusterList 에서 lgeo 를 찾지 못했다. 응답 ' + clusterText.length + '바이트 / 앞부분: ' + (clusterHead || '(없음)'));
       log('');
-      log('  ▶ 1단계부터 값이 오지 않았습니다. 브라우저의 실제 요청을 떠와야 정확히 맞출 수 있습니다.');
+      log('  ▶ 1) 먼저 이걸 해보세요 (가장 쉽습니다) — 위 요청 URL 을 그대로 크롬 주소창에 붙여 넣고 엽니다.');
+      log('       · 매물 정보(JSON)가 보이면 → 파라미터는 맞고 쿠키/헤더가 문제입니다');
+      log('       · null 만 보이면 → URL 자체가 틀린 것입니다');
+      log('       어느 쪽인지만 알려주셔도 원인이 좁혀집니다.');
+      log('');
+      log('  ▶ 2) 확실한 방법 — 브라우저의 실제 요청을 떠오는 것입니다.');
       log('    크롬에서 m.land.naver.com → 여의도동 아파트 전세 검색 → F12 → Network 탭 →');
       log('    목록을 스크롤 → articleList 요청 우클릭 → Copy → Copy as cURL (bash) → 그 내용을 알려주세요.');
       log('    (Cookie 줄은 지우고 보내셔도 됩니다)');
@@ -641,7 +647,7 @@ async function runVerify(loaded) {
     log('     ' + filteredUrl);
     /* 먼저 원문(text)으로 받는다. 스펙이 틀렸을 때 "구조가 다르다"는 말만으로는
        무엇이 틀렸는지 알 수 없다. 응답 원문을 남겨야 진단이 가능하다. */
-    var listRaw = await c.get(filteredUrl, { label: 'articleList (wprc 필터 있음)', expect: 'text' });
+    var listRaw = await c.get(filteredUrl, { label: 'articleList (wprc 필터 있음)', expect: 'text', referer: mapRef });
     var rawText = String(listRaw.text == null ? '' : listRaw.text);
     var rawPath = path.join(RUN_LOGS_DIR, 'last-raw-v1.txt');
     try {
