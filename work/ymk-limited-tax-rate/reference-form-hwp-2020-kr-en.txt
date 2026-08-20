@@ -1,0 +1,169 @@
+=== BodyText/Section0 ===
+捤獥汤捯氠瑢
+■ 법인세법 시행규칙 [별지 제72호의2서식] <개정 2020. 3. 13.>
+국내원천소득 제한세율 적용신청서(외국법인용)
+※ 해당되는 [  ]에 √표를 합니다.
+(앞쪽)
+접수번호
+접수일자
+1. 신청인의 인적사항
+① 유형
+[  ] 법인, [  ] 연금, [  ] 기금,
+[  ] 조세조약상 실질귀속자로 인정되는 국외투자기구(조세조약 관련 규정:                        )
+[  ] 거주지국에서 납세의무를 부담하고, 국내원천소득에 대한 소득세 또는 법인세를 부당하게 감소시킬 목적으로 설립한 것이 아닌 국외투자기구
+[  ] 기타(                              )
+② 법인명
+　
+⑥ 주소
+③ 대표자 성명
+　
+⑦ 거주지국
+④ 납세자번호
+　
+⑧ 국가코드
+⑤ 설립 연월일
+　
+⑨ 전화번호
+2.  신청인이 적용받고자 하는 규정
+⑩ 대한민국과           간의 조세조약    제    조  제    항  제    호        소득  세율     % 
+제    조  제    항  제    호        소득  세율     %
+제    조  제    항  제    호        소득  세율     % 
+3. 실질귀속자 판정기준
+灳瑣 대한민국의 「국민연금법」, 「공무원연금법」, 「군인연금법」, 「사립학교 교직원연금법」 및 「근로자 퇴직급여 보장법」 등에 준하는 체약상대국의 법률에 따라 설립된 연금: 예 [  ], 아니오 [  ]
+灳瑣 체약상대국의 법률에 따라 설립된 비영리단체로서 수익을 구성원에게 분배하지 아니하는 기금: 예 [  ], 아니오 [  ]
+灳瑣 설립지국과 한국 간에 체결된 조세조약에서 실질귀속자로 인정되는 것으로 규정된 국외투자기구: 예 [  ], 아니오 [  ]
+灳瑣 국외투자기구의 거주지국에서 그 국외투자기구가 납세의무를 부담하고, 국내원천소득에 대한 소득세 또는 법인세를 부당하게 감소시킬 목적으로 설립한 것이 아닌 국외투자기구: 예 [  ], 아니오 [  ]
+灳瑣 지급받는 국내원천소득의 실질귀속자입니까? 예 [  ], 아니오 [  ]
+灳瑣 본인 또는 지급받는 소득이 대한민국과 거주지국 간의 조세조약상 혜택을 배제(제한)시키는 규정의 적용을 받습니까?
+예 [  ], 아니오 [  ]
+본인은 「법인세법」 제98조의6 및 「법인세법 시행령」 제138조의7에 따라 국내원천소득 제한세율 적용신청서를 제출함에 있어 아래 사항을 명확히 인지하고 있을 뿐 아니라 기재내용에 오류가 없으며 이 신청과 관련된 모든 국내원천소득의 실질귀속자(또는 실질귀속자를 대리하여 서명을 하도록 위임을 받은 자)에 해당함을 확인합니다.
+1) 신청인은 위 신청서 내용이 사실과 다른 경우에는 원천징수세액이 관련 법률에 따라 원천징수되어야 할 세액에 미달할 수 있음을 인지하고 있습니다.
+2) 신청인은 위 灳瑣 ~ 灳瑣 중 하나의 요건에 해당하여 예로 표시한 경우 원천징수의무자가 해당 연금 등이 설립된 국가와 대한민국 간에 체결된 조세조약상 제한세율을 적용하게 됨을 인지하고 있습니다. 특히, 신청인이 灳瑣 ~ 灳瑣의 연금, 기금 등에 해당하는 경우 그 연금, 기금 등에 투자한 투자자를 입증할 필요없이 조세조약상 제한세율을 적용하게 됨을 인지하고 있습니다.
+3) 신청인은 위 灳瑣에 아니오로 표시한 경우 또는 위 灳瑣에 예로 표시한 경우에는 신청인의 거주지국과 대한민국 간에 체결된 조세조약상 제한세율이 적용되지 아니함을 인지하고 있습니다.
+ 년        월        일
+신 청 인(대표자)            
+(서명 또는 인)
+귀하
+붙임 서류
+灳瑣, 灳瑣, 灳瑣 중 어느 하나에 해당하는 경우 해당 사실을 입증할 수 있는 서류
+수수료
+없음
+대리인
+灳瑣 대리인유형 
+ [  ]납세관리인  [  ]그 외 대리인
+灳瑣 성명 또는 법인명
+灳瑣灳瑣 사업자(주민)등록번호
+灳瑣 주소 또는 소재지
+210mm×297mm[백상지 80g/㎡ 또는 중질지 80g/㎡]
+氠瑢
+(뒤쪽)
+작 성 방 법
+※ 접수번호 및 접수일자는 원천징수의무자가 실질귀속자로부터 이 신청서를 제출받아 접수한 일자 및 일련번호를 적습니다.
+1. 이 신청서는 외국법인이 지급받는 국내원천소득에 대하여 조세조약에 따른 제한세율을 적용받으려는 경우에 제출하며, 조세조약에 따라 국내에서 원천징수가 면제되는 경우에는 이를 제출하지 않습니다. 
+이 신청서를 제출하여 해당 국내원천소득에 대하여 조세조약에 따른 제한세율을 적용받은 이후에 다시 국내원천소득을 지급받는 경우로서 신청인의 법인명, 대표자 성명, 납세자번호, 주소, 거주지국, 전화번호 등에 변동이 있는 경우 또는 이 신청서를 제출한 날부터 3년이 경과한 경우에는 이 신청서를 다시 작성하여 제출합니다. 
+2. ①유형 란에는 소득을 지급받는 신청인의 해당 유형에 '√' 표시를 하여 구분합니다. 신청인의 유형이 「법인세법 시행령」 제138조의7제5항 각 호의 어느 하나에 해당하는 연금, 기금인 경우에는 연금, 기금 란에 '√' 표시를 하고, 조세조약상 실질귀속자로 인정되는 국외투자기구인 경우에는 해당하는 란에 '√' 표시를 하며 (  )안에 해당 조세조약상 관련규정을 적습니다. 거주지국에서 납세의무를 부담하고, 국내원천소득에 대한 소득세 또는 법인세를 부당하게 감소시킬 목적으로 설립한 것이 아닌 국외투자기구인 경우에는 해당하는 란에 '√' 표시를 하고, 정부, 지방자치단체, 중앙은행 등 기타의 유형에 해당하는 경우에는 기타 란에 '√' 표시를 하며 (  )안에 그 유형을 적습니다.
+3. ②법인명 란에는 소득을 지급받는 신청인의 상호 등 명칭을 영문으로 기재하되, 머리글자(Initial)를 적지 않고 정식 명칭 전부를 적습니다.
+4. ③대표자 성명 란에 외국인은 성명을 영문으로 적되, 여권에 있는 영문성명 전부를 적습니다.
+5. ④납세자번호 란에는 투자등록증상의 투자등록번호를 적고 그 번호가 없는 경우에는 거주지국의 납세번호(Taxpayer Identification Number)(사업자등록번호를 부여받은 경우에는 사업자등록번호)를 적습니다. 
+6. ⑤설립 연월일에는 신청인의 설립 연월일을 연, 월, 일(YYYY-MM-DD) 순으로 적습니다.
+7. ⑥주소 란에는 영문주소를 번지(number), 거리(Street), 시(City), 도(State), 우편번호(Postal code), 국가(Country) 순으로 적습니다. 우편사서함을 적지 않습니다.
+8. ⑦거주지국 및 ⑧국가코드란은 국제표준화기구(ISO)가 정한 국가별 ISO코드 중 국명(약어) 및 국가코드를 적습니다.
+9. ⑨전화번호 란에는 연락가능한 전화번호를 국가번호와 지역번호를 포함하여 적습니다.
+10. ⑩란에는 적용받고자 하는 조세조약과 해당 조문, 해당 국내원천소득 그리고 제한세율을 적습니다. 다만, 해당 조세조약의 대상조세에 지방소득세 소득분이 포함되지 않는 경우에는 「지방세법」 제89조제1항의 세율을 반영한 세율을 적습니다.
+11. 灳瑣~灳瑣의 어느 하나에 해당하여 예로 표시한 경우에는 해당 연금, 기금 또는 국외투자기구가 설립된 체약상대국과 대한민국간에 체결된 조세조약상 제한세율이 적용됩니다.
+12. 灳瑣란에서 예에 √ 표시한 경우에는 ‘실질귀속자 특례 국외투자기구 신고서’를 제출해야 합니다.
+13. 灳瑣의 질문에서 아니오에 √ 표시한 경우 조세조약상 제한세율이 적용되지 않습니다.
+14. 灳瑣의 질문은 신청인 및 신청인의 소득에 대하여 대한민국과 신청인의 거주지국 간에 체결한 조세조약에 조약상 혜택의 적용이 배제 또는 제한되는 경우에 해당하는지 여부를 확인하여 표시합니다. 만약 예에 √ 표시한 경우에는 조세조약상 제한세율이 적용되지 않습니다.
+15. 灳瑣~灳瑣 란은 신청서를 본인 외에 대리인에 의하여 제출하는 경우에 적는 것으로서, 「국세기본법」 제82조에 따른 납세관리인 외의 기타 대리인에 의해서 제출하는 경우에는 그 위임관계를 증명하는 위임장을 그 국문번역문과 함께 제출하여 주시기 바랍니다.
+16. 이 신청서(붙임 서류가 있는 경우 이를 포함함)를 제출받은 원천징수의무자 또는 국외투자기구는 이를 「법인세법」 제98조제1항에 따른 원천징수세액의 납부기한 다음날부터 5년 간 보관해야 하며, 원천징수 의무자의 납세지 관할 세무서장이 그 제출을 요구하는 경우에는 이를 제출해야 합니다.
+210mm×297mm[백상지 80g/㎡ 또는 중질지 80g/㎡]
+
+=== BodyText/Section1 ===
+捤獥汤捯慤桥慤桥潴景潴景潴景慤桥
+PUBLIC
+PUBLIC
+ 
+氠瑢
+본 서식은 납세편의를 위해 참고용으로 제공되는 것입니다
+These forms are provided for reference for your convenience in taxation
+
+=== BodyText/Section2 ===
+捤獥汤捯氠瑢
+■ Enforcement Rules of the Corporate Income Tax Act [Form No. 72‐2] (Revised on March 13, 2020)
+Application for Entitlement to Reduced Tax Rate
+on Domestic Source Income (for Foreign Corporation)
+※ Please check the appropriate [  ].
+(Front)
+Filing No.
+Filing Date　
+1. Applicant Information
+① Type of Entity
+[  ] Corporation, [  ] Pension, [  ] Fund,
+[  ] Overseas investment vehicle recognized as beneficial owner under tax treaty  
+(Relevant tax treaty provisions:                    )
+    [  ] Overseas investment vehicle which is subject to taxation in the jurisdiction it resides and there is no intention to unjustly reduce income tax or corporate tax on Korean source income by establishing the OIV in its jurisdiction.
+    [  ] Others (                                        )
+② Name of Corporation
+　
+⑥ Address
+③ Name of Representative
+　
+⑦ Country of Residence
+④ Taxpayer Identification No.
+　
+⑧ Country Code
+⑤ Date of Incorporation
+　
+⑨ Telephone Number
+2. Claim of Applicable Tax Treaty Provisions
+⑩ Tax Treaty between Korea and              Article     Paragraph     Subparagraph     Type of Income       Tax Rate    %
+Article     Paragraph     Subparagraph     Type of Income       Tax Rate    %
+Article     Paragraph     Subparagraph     Type of Income       Tax Rate    % 
+3. Determination of Beneficial Owner
+⑪ A pension established under the laws of a tax treaty partner country, which are equivalent to the Korean National Pension Act, Public Officials Pension Act, Armed Forces Personnel Act, Pension for Private School Teachers and Staff Act, and Guarantee of Workers' Retirement Benefits Act, etc.: Yes [  ]  No [  ]
+⑫ A fund that is established as a non‐profit organization under the laws of a tax treaty partner country, which does not distribute its profits to its members: Yes [  ]  No [  ]
+⑬ An overseas investment vehicle recognized as beneficial owner under the tax treaty between Korean and the country in which it is incorporated: Yes [  ]  No [  ]
+⑭ Is Overseas Investment Vehicle subject to taxation in the jurisdiction it resides and there is no intention to unjustly reduce income tax or corporate tax on Korean source income by establishing the OIV in its jurisdiction?  Yes [  ]  No [  ]
+⑮ Is the corporation a beneficial owner of domestic source income?: Yes [  ]  No [  ]
+歭扯 Is the Applicant or its income subject to the provisions of the tax treaty between Korea and its country of residence that deny (restrict) tax treaty benefits? Yes [  ]  No [  ]
+The Applicant hereby confirms that with regard to submitting this Application pursuant to Article 98‐6 of the Corporate Income Tax Act ("CITA") and Article 138‐7 of the Enforcement Decree of CITA ("ED‐CITA"), the Applicant is clearly aware of the followings provided below that there is no false statement in the contents of this Application, and that the Applicant is the beneficial owner (or attorney‐in‐fact authorized to sign this Application on behalf of the beneficial owner) of all the domestic source income which this application relates. 
+1) The Applicant is aware that if any of the contents of this Application is different from true facts, the amount of withholding tax under this Application may be less than the amount of withholding tax that shall be withheld in accordance with the relevant laws.
+2) The Applicant is aware that if it answers “Yes” to any one of ⑪ through ⑭ above satisfying the requirements thereof, the withholding agent shall apply the reduced tax rate under the tax treaty between Korea and the country in which the relevant pension, etc. is established. In particular, the Applicant is aware that if the Applicant is pension or fund as prescribed in any one of ⑪ through ⑬ above, the reduced tax rate under the tax treaty shall apply with no need to prove the investors who invested in the pension or the fund.
+  3) The Applicant is aware that if it answers “No” to ⑮ or “Yes” to 灳瑣 above, the reduced tax rate under the tax treaty between Korea and the residence country of the Applicant shall not apply. 
+Date
+                        
+Applicant (Representative)
+(Signature or Seal)
+To.
+                      
+ Attachment:  Documents substantiating the fact that the Applicant falls under any of the categories ⑪  through ⑬
+              No charge
+Attorney‐in‐Fact
+灳瑣 Type 
+[  ] Tax Administrator 
+[  ] Others
+灳瑣 Name of Individual or Corporation
+灳瑣 Business Registration No. (Resident Registration No.)
+ 灳瑣 Address or Place of Business
+(Back)
+Filing Instruction
+※ The filing date is the date on which the withholding agent files this Application as received from the beneficial owner and the filing number is the serial number assigned to such filing. 
+1. This Application shall be submitted by a foreign corporation which wishes to apply a reduced tax rate under the relevant tax treaty applicable to its Korean source income, and this form shall not be submitted by a foreign corporation which is exempt from Korean withholding tax pursuant to the relevant tax treaty. In the case where the Applicant receives additional Korean source income after the submission of this Application whereby a reduced tax rate under the relevant tax treaty was applied to the previous Korean source income, the Applicant is required to prepare and file a new application if there is any change in its corporate name, representative, taxpayer ID No., address, country of residence and telephone number, etc., or if three years have elapsed since the submission of this Application.
+2. Item ①. Check the appropriate type of entity that applies. If the Applicant is a pension, fund or overseas investment vehicle falling under any one of the Items under Article 138‐7(5) of the ED‐CITA, check the appropriate [space].  Also, enter the relevant tax treaty provisions in the parentheses in the case of an overseas investment vehicle. For other types of Applicants such as a government, local government or central bank, etc., select “Others” and specify the type in parentheses.    
+3. Item ②. Enter the Applicant’s full name in English.
+4. Item ③. If the representative is a foreigner; enter his/her full English name as shown in his/her passport.
+5. Item ④. Enter the investment registration number from the investment registration certificate. In the absence of such number, enter the Applicant’s taxpayer ID No. issued by the tax authority of its residence country (or, enter the Applicant’s Business Registration No. if it is issued by a district tax office in Korea).  
+6. Item ⑤. Enter the Applicant’s date of incorporation in the following format: YYYY‐MM‐DD.
+7. Item ⑥. Enter the Applicant’s address in English in the following order: street number, street name, city, state, postal code and country.  Do not enter a PO Box. 
+8. Items ⑦ and ⑧. Enter the country abbreviation and code from ISO Country Codes set by the International Organization for Standardization (ISO). 
+9. Item ⑨. Enter current telephone number including the country code and area code, if any.
+ 
+10. Item ⑩. Enter the tax treaty and relevant provisions therein to be applied, type of relevant Korean source income and reduced tax rate.  If the reduced tax rate under the relevant tax treaty does not include local income surtax, enter a tax rate reflecting the tax rate under Article 89(1) of the Local Tax Act.  
+11. If the Applicant answers “Yes” to any one of ⑪ through 灳瑣 satisfying the requirement thereof, the reduced tax rate under the tax treaty between Korea and the country in which the Applicant (i.e., the pension, fund or overseas investment vehicle, etc) is established shall be applied. 
+12. If the Applicant answers “Yes” to ⑭, the Applicant shall submit “Declaration of Overseas Investment Vehicle Treated as the Beneficial Owner of Korea Source Income”.  
+13. If the Applicant answers “No” to ⑮, the reduced tax rate under the relevant tax treaty shall not apply.
+14. For Item 灳瑣, confirm whether or not the Applicant or its income is subject to the provisions of the tax treaty between Korea and its country of residence which deny (restrict) the tax treaty benefits. If checked “Yes,” the Applicant shall not be entitled to the reduced tax treaty under the tax treaty.
+ 
+15. Items 灳瑣 through 灳瑣 should be completed when an attorney‐in‐fact submits this Application on behalf of the Applicant. An attorney‐in‐fact other than a tax administrator under Article 82 of the Framework Act on National Taxes is required to submit the Power of Attorney together with a Korean translation.
+16. The withholding agent or overseas investment vehicle who received this Application (including any attachments thereto) is required to maintain it for five years starting from the day following the withholding tax payment due date under Article 98(1) of the CITA and submit it upon request to the Head of the district tax office having jurisdiction over the tax payment place of the withholding agent.
+13
