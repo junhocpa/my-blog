@@ -59,10 +59,45 @@ class Hwp:
     def text(self,h):
         b=self.body
         return b[h+1][2].decode('utf-16-le') if h+1<len(b) and b[h+1][0]==67 else ''
+    def _rec(self,h,tag):
+        for j in range(h+1,len(self.body)):
+            if self.body[j][0]==66: break
+            if self.body[j][0]==tag: return j
+        return None
     def _charshape_rec(self,h):
-        for j in range(h+1,min(h+4,len(self.body))):
-            if self.body[j][0]==68: return j
-        raise KeyError('charshape rec')
+        j=self._rec(h,68)
+        if j is None: raise KeyError('charshape rec')
+        return j
+    @staticmethod
+    def boundaries(t):
+        """문자 경계 위치 집합 (8워드 제어문자 내부는 제외)"""
+        single={0,10,13,24,25,26,27,28,29,30,31}
+        pos=set(); i=0
+        while i<len(t):
+            pos.add(i); c=ord(t[i])
+            i+= 8 if (c<32 and c not in single) else 1
+        pos.add(len(t)); return pos
+    def clamp(self,h):
+        """글자모양·줄정보 위치를 새 텍스트 길이/경계에 맞게 정리"""
+        t=self.text(h); L=len(t); ok=self.boundaries(t)
+        hd=bytearray(self.body[h][2])
+        j=self._rec(h,68)
+        if j is not None:
+            raw=self.body[j][2]
+            pairs=[struct.unpack('<II',raw[k:k+8]) for k in range(0,len(raw),8)]
+            keep=[p for p in pairs if p[0]<L and p[0] in ok]
+            if not keep or keep[0][0]!=0: keep=[(0,pairs[0][1])]+[p for p in keep if p[0]!=0]
+            self.body[j][2]=b''.join(struct.pack('<II',*p) for p in keep)
+            struct.pack_into('<H',hd,12,len(keep))
+        j=self._rec(h,69)
+        if j is not None:
+            raw=self.body[j][2]
+            segs=[raw[k:k+36] for k in range(0,len(raw),36)]
+            keep=[s for s in segs if struct.unpack('<I',s[0:4])[0]<L and struct.unpack('<I',s[0:4])[0] in ok]
+            if not keep: keep=[segs[0]]
+            self.body[j][2]=b''.join(keep)
+            struct.pack_into('<H',hd,16,len(keep))
+        self.body[h][2]=bytes(hd)
     def base_id(self,h):
         d=self.body[self._charshape_rec(h)][2]
         return struct.unpack('<II',d[0:8])[1]
@@ -72,6 +107,7 @@ class Hwp:
         struct.pack_into('<I',hd,0,(old & 0x80000000)|len(full)); b[h][2]=bytes(hd)
         if b[h+1][0]==67: b[h+1][2]=data
         else: b.insert(h+1,[67,b[h+1][1],data])
+        self.clamp(h)
         spans=[(m,{'shade':YELLOW}) for m in marks]+[(m,{'size':800}) for m in small]
         if spans: self.style(h,spans)
     def style(self,h,spans):
@@ -145,6 +181,17 @@ class Hwp:
                 if b[j][0]==68: cs=len(b[j][2])//8
                 if b[j][0]==69: ls=len(b[j][2])//36
             if tl!=nch: bad.append((i,'nChars',nch,tl))
+            t=self.text(i); ok=self.boundaries(t) if t else {0,1}
+            jc=self._rec(i,68)
+            if jc is not None:
+                for k in range(0,len(b[jc][2]),8):
+                    p=struct.unpack('<I',b[jc][2][k:k+4])[0]
+                    if p>=nch or p not in ok: bad.append((i,'charshape pos',p,nch))
+            jl=self._rec(i,69)
+            if jl is not None:
+                for k in range(0,len(b[jl][2]),36):
+                    p=struct.unpack('<I',b[jl][2][k:k+4])[0]
+                    if p>=nch or p not in ok: bad.append((i,'lineseg pos',p,nch))
             if cs is not None and cs!=ncs: bad.append((i,'nCharShapes',ncs,cs))
             if ls is not None and ls!=nls: bad.append((i,'nLineSegs',nls,ls))
         if bad: raise AssertionError(f"문단 무결성 불일치 {len(bad)}건: {bad[:6]}")
