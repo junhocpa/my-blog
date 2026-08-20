@@ -1,4 +1,5 @@
 import olefile, zlib, struct, shutil
+from cfb import write_cfb
 
 def parse(d):
     i=0; recs=[]
@@ -98,16 +99,24 @@ class Hwp:
 
     # ---------- 저장 ----------
     def save(self,dst):
-        shutil.copyfile(self.src,dst)
-        o=olefile.OleFileIO(dst,write_mode=True)
-        for name,recs,raw in (('BodyText/Section0',self.body,self.body_raw),
-                              ('DocInfo',self.info,self.info_raw)):
+        ole=olefile.OleFileIO(self.src)
+        raw={"/".join(p):ole.openstream("/".join(p)).read() for p in ole.listdir()}
+        def pack(recs):
             co=zlib.compressobj(9,zlib.DEFLATED,-15)
-            packed=co.compress(build(recs))+co.flush()
-            if len(packed)>len(raw): raise RuntimeError(f'{name}: {len(packed)} > {len(raw)}')
-            o.write_stream(name,packed+b'\x00'*(len(raw)-len(packed)))
-        o.close()
+            return co.compress(build(recs))+co.flush()
+        raw['BodyText/Section0']=pack(self.body)
+        raw['DocInfo']=pack(self.info)
+        tree={}
+        for path,data in raw.items():
+            if '/' in path:
+                st,nm=path.split('/',1); tree.setdefault(st,{})[nm]=data
+            else:
+                tree[path]=data
+        write_cfb(dst,tree)
         v=olefile.OleFileIO(dst)
-        assert [tuple(r) for r in parse(zlib.decompress(v.openstream('BodyText/Section0').read(),-15))]==[tuple(r) for r in self.body]
-        assert [tuple(r) for r in parse(zlib.decompress(v.openstream('DocInfo').read(),-15))]==[tuple(r) for r in self.info]
+        got={"/".join(p):v.openstream("/".join(p)).read() for p in v.listdir()}
+        assert sorted(got)==sorted(raw), "stream set mismatch"
+        for k in raw: assert got[k]==raw[k], f"stream differs: {k}"
+        assert [tuple(r) for r in parse(zlib.decompress(got['BodyText/Section0'],-15))]==[tuple(r) for r in self.body]
+        assert [tuple(r) for r in parse(zlib.decompress(got['DocInfo'],-15))]==[tuple(r) for r in self.info]
         return dst
