@@ -32,22 +32,26 @@ class Hwp:
         self.info_raw=ole.openstream('DocInfo').read()
         self.body=parse(zlib.decompress(self.body_raw,-15))
         self.info=parse(zlib.decompress(self.info_raw,-15))
-        self._yellow={}                      # base charshape id -> yellow clone id
+        self._var={}                        # (base,shade,size) -> clone id
 
     # ---------- DocInfo : 노란 음영 글자모양 ----------
     def _charshape_indices(self):
         return [i for i,r in enumerate(self.info) if r[0]==21]
-    def yellow_id(self, base):
-        if base in self._yellow: return self._yellow[base]
+    def variant(self, base, shade=None, size=None):
+        key=(base,shade,size)
+        if key in self._var: return self._var[key]
         idxs=self._charshape_indices()
         data=bytearray(self.info[idxs[base]][2])
-        struct.pack_into('<I',data,60,YELLOW)          # shadeColor
+        if shade is not None: struct.pack_into('<I',data,60,shade)     # shadeColor
+        if size  is not None:
+            struct.pack_into('<i',data,42,size)                        # baseSize
+            for k in range(7): data[14+k]=100                          # 장평 100%
         new_id=len(idxs)
         self.info.insert(idxs[-1]+1,[21,self.info[idxs[-1]][1],bytes(data)])
         for i,r in enumerate(self.info):               # ID_MAPPINGS[9] = 글자모양 개수
             if r[0]==17:
                 m=bytearray(r[2]); struct.pack_into('<I',m,9*4,new_id+1); self.info[i][2]=bytes(m); break
-        self._yellow[base]=new_id
+        self._var[key]=new_id
         return new_id
 
     # ---------- BodyText ----------
@@ -62,32 +66,36 @@ class Hwp:
     def base_id(self,h):
         d=self.body[self._charshape_rec(h)][2]
         return struct.unpack('<II',d[0:8])[1]
-    def set(self,h,new,marks=()):
-        """marks: 노란 음영을 넣을 부분문자열 목록"""
+    def set(self,h,new,marks=(),small=()):
         b=self.body; full=new+'\r'; data=full.encode('utf-16-le')
         hd=bytearray(b[h][2]); old=struct.unpack('<I',bytes(hd[0:4]))[0]
         struct.pack_into('<I',hd,0,(old & 0x80000000)|len(full)); b[h][2]=bytes(hd)
         if b[h+1][0]==67: b[h+1][2]=data
         else: b.insert(h+1,[67,b[h+1][1],data])
-        if marks: self.highlight(h,marks)
-    def highlight(self,h,marks):
-        t=self.text(h); base=self.base_id(h); yid=self.yellow_id(base)
-        spans=[]
-        for m in marks:
-            p=t.find(m)
-            if p<0: raise KeyError(f'mark not found: {m!r} in {t!r}')
-            spans.append((p,p+len(m)))
-        spans.sort()
-        pairs=[]; 
-        for s,e in spans:
+        spans=[(m,{'shade':YELLOW}) for m in marks]+[(m,{'size':800}) for m in small]
+        if spans: self.style(h,spans)
+    def style(self,h,spans):
+        """spans: [(부분문자열, {'shade':..,'size':..}), ...]"""
+        t=self.text(h); base=self.base_id(h); segs=[]
+        for sub,kw in spans:
+            p=t.find(sub)
+            if p<0: raise KeyError(f'not found: {sub!r} in {t!r}')
+            segs.append((p,p+len(sub),self.variant(base,**kw)))
+        segs.sort()
+        pairs=[]
+        for s,e,cid in segs:
             if not pairs and s>0: pairs.append((0,base))
-            elif not pairs: pass
-            pairs.append((s,yid)); pairs.append((e,base))
+            pairs.append((s,cid)); pairs.append((e,base))
         if not pairs or pairs[0][0]!=0: pairs.insert(0,(0,base))
+        # 마지막 구간이 문단 끝이면 잉여 pair 제거
+        if len(pairs)>1 and pairs[-1][0]>=len(t): pairs.pop()
         j=self._charshape_rec(h)
         self.body[j][2]=b''.join(struct.pack('<II',p,c) for p,c in pairs)
-    def append(self,h,suffix,marks=()): self.set(h,self.text(h)[:-1]+suffix,marks)
+        hd=bytearray(self.body[h][2])                 # ★ nCharShapes 동기화
+        struct.pack_into('<H',hd,12,len(pairs)); self.body[h][2]=bytes(hd)
+    def append(self,h,suffix,marks=(),small=()): self.set(h,self.text(h)[:-1]+suffix,marks,small)
     def sub(self,h,old,new,marks=()): self.set(h,self.text(h)[:-1].replace(old,new,1),marks)
+
     def idx_of(self,obj):
         for i,r in enumerate(self.body):
             if r is obj: return i
@@ -119,4 +127,25 @@ class Hwp:
         for k in raw: assert got[k]==raw[k], f"stream differs: {k}"
         assert [tuple(r) for r in parse(zlib.decompress(got['BodyText/Section0'],-15))]==[tuple(r) for r in self.body]
         assert [tuple(r) for r in parse(zlib.decompress(got['DocInfo'],-15))]==[tuple(r) for r in self.info]
+        self.verify()
         return dst
+
+    def verify(self):
+        """PARA_HEADER의 nChars/nCharShapes/nLineSegs 가 실제 레코드와 일치하는지 검사"""
+        b=self.body; bad=[]
+        for i,r in enumerate(b):
+            if r[0]!=66: continue
+            nch=struct.unpack('<I',r[2][0:4])[0] & 0x7fffffff
+            ncs=struct.unpack('<H',r[2][12:14])[0]
+            nls=struct.unpack('<H',r[2][16:18])[0]
+            tl=1; cs=ls=None
+            for j in range(i+1,len(b)):
+                if b[j][0]==66: break
+                if b[j][0]==67: tl=len(b[j][2])//2
+                if b[j][0]==68: cs=len(b[j][2])//8
+                if b[j][0]==69: ls=len(b[j][2])//36
+            if tl!=nch: bad.append((i,'nChars',nch,tl))
+            if cs is not None and cs!=ncs: bad.append((i,'nCharShapes',ncs,cs))
+            if ls is not None and ls!=nls: bad.append((i,'nLineSegs',nls,ls))
+        if bad: raise AssertionError(f"문단 무결성 불일치 {len(bad)}건: {bad[:6]}")
+        return True
